@@ -1,0 +1,204 @@
+/* --- OVERLAY --- */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    backdrop-filter: blur(2px);
+}
+
+/* --- MAIN CARD --- */
+.exact-modal {
+    background: white;
+    width: 580px;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+    position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* --- BADGE --- */
+.badge-wrap { margin-bottom: 20px; }
+
+.pill-badge {
+    background: #e0f2fe; /* Light Blue background */
+    color: #0284c7;      /* Blue text */
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 50px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: "Courier New", Courier, monospace;
+}
+
+/* --- CLOSE BUTTON --- */
+.close-btn-abs {
+    position: absolute;
+    top: 20px; right: 20px;
+    background: none; border: none; cursor: pointer; color: #9ca3af;
+}
+.close-btn-abs:hover { color: #000; }
+
+/* --- TITLE --- */
+.exact-title {
+    font-size: 19px;
+    color: #111827;
+    margin-bottom: 35px;
+    font-weight: 400;
+    line-height: 1.5;
+}
+.exact-title strong { font-weight: 700; }
+
+/* --- BUTTONS STACK --- */
+.pill-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    max-width: 480px;
+    margin-bottom: 20px;
+}
+
+/* The Big Pill Button */
+.pill-btn {
+    width: 100%;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 50px; /* PILL SHAPE */
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.pill-btn:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+/* Connected State */
+.pill-btn.connected-state {
+    border-color: #008060;
+    background: #f0fdf4; /* Green tint */
+}
+
+/* Disabled State */
+.pill-btn.disabled-state {
+    opacity: 0.6;
+    background: #f3f4f6;
+    cursor: not-allowed;
+}
+
+/* Inside the button */
+.btn-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center everything */
+    position: relative;
+    width: 100%;
+}
+
+/* Icon (Absolute Left or Flex) */
+.brand-icon {
+    display: flex;
+    align-items: center;
+    margin-right: 12px;
+}
+
+.btn-text {
+    font-size: 15px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.connected-state .btn-text {
+    color: #008060;
+    font-weight: 600;
+}
+
+/* RIGHT ACTIONS GROUP (Trash + Check) */
+.right-actions-group {
+    position: absolute;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.disconnect-btn {
+    color: #ef4444; /* Red color */
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+.disconnect-btn:hover {
+    background: #fee2e2;
+}
+
+.check-mark {
+    display: flex;
+    align-items: center;
+}
+
+/* --- REFRESH LINK (UPDATED) --- */
+.tiny-refresh {
+    font-size: 12px; 
+    color: #008060; /* Shopify Green Color */
+    text-decoration: none; 
+    cursor: pointer; 
+    margin-bottom: 30px;
+    font-weight: 600;
+}
+.tiny-refresh:hover { 
+    text-decoration: underline; 
+    color: #004c3f;
+}
+
+/* --- FOOTER --- */
+.exact-footer {
+    width: 100%;
+    border-top: 1px solid #f3f4f6;
+    padding-top: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.discard-link {
+    color: #6b7280; font-size: 14px; cursor: pointer; font-weight: 500;
+}
+.discard-link:hover { color: #dc2626; }
+
+.footer-btns { display: flex; gap: 10px; }
+
+.footer-btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center;
+}
+
+.footer-btn.outline {
+    background: white; border: 1px solid #d1d5db; color: #374151;
+}
+.footer-btn.outline:hover { background: #f9fafb; }
+
+.footer-btn.primary {
+    background: #008060; color: white; border: none;
+    box-shadow: 0 2px 5px rgba(0,128,96,0.2);
+}
+.footer-btn.primary:hover { background: #006e52; }

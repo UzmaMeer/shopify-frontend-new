@@ -1,0 +1,183 @@
+/* --- OVERLAY --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85); /* Darker overlay */
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* --- MAIN MODAL BOX --- */
+.modal-content {
+  background: black; /* 👈 Changed from white to BLACK to hide any gaps */
+  width: 95%;
+  max-width: 1100px;
+  height: 90vh;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalScaleUp 0.3s ease-out;
+}
+
+@keyframes modalScaleUp {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* --- HEADER (White Strip) --- */
+.modal-header {
+  padding: 15px 25px;
+  border-bottom: 1px solid #333; /* Darker border */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff; /* Keep header white for contrast */
+  flex-shrink: 0;
+}
+
+.modal-title {
+  font-weight: 700;
+  font-size: 18px;
+  color: #1a1a1a;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.maximize-btn, .close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #5c5f62;
+  font-size: 24px;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.maximize-btn:hover, .close-btn:hover {
+  color: #000;
+}
+
+/* --- VIDEO PREVIEW AREA (The Fix) --- */
+.video-preview-area {
+  flex: 1; 
+  padding: 0; 
+  margin: 0;
+  background: black; /* 👈 Ensures the background is pitch black */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.video-container {
+  width: 100%;
+  height: 100%;
+  background: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.final-video {
+  height: 100%;       /* 👈 Forces video to take full height */
+  width: 100%;        /* 👈 Forces video to take full width */
+  object-fit: contain; /* 👈 Ensures video isn't cropped, just fitted with black bars if needed */
+  outline: none;
+  background: black;
+}
+
+/* --- LOADING STATE --- */
+.loading-state {
+  color: white;
+  text-align: center;
+}
+
+.status-text {
+  margin-top: 15px;
+  font-size: 16px;
+  color: #ccc;
+}
+
+.progress-container {
+  width: 300px;
+  margin-top: 20px;
+}
+
+.progress-bar-bg {
+  background: #333;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  background: #008060; /* Shopify Green */
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* --- FOOTER (White Strip) --- */
+.modal-footer {
+  padding: 15px 25px;
+  border-top: 1px solid #333;
+  background-color: #fff; /* Keep footer white */
+  flex-shrink: 0;
+}
+
+.action-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.right-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-action {
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid #c9cccf;
+  background: white;
+  color: #202223;
+  transition: all 0.2s;
+}
+
+.btn-action.secondary {
+  border: none;
+  color: #5c5f62;
+}
+
+.btn-action.btn-primary {
+  background: #008060;
+  color: white;
+  border: none;
+  box-shadow: 0 2px 5px rgba(0, 128, 96, 0.2);
+}
+
+.btn-action:hover {
+  transform: translateY(-1px);
+}
+
+.btn-action.btn-primary:hover {
+  background: #006e52;
+  box-shadow: 0 4px 8px rgba(0, 128, 96, 0.3);
+}

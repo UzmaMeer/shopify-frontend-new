@@ -1,0 +1,91 @@
+/* --- STORE GRID & DASHBOARD STYLES --- */
+
+/* Grid Header */
+.grid-header {
+  margin-bottom: 25px;
+}
+
+.grid-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 5px 0;
+  color: #202223;
+}
+
+.grid-header p {
+  color: #6d7175;
+}
+
+/* Product Grid Layout */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+/* Individual Product Card */
+.product-card {
+  background: white;
+  border: 1px solid #e1e3e5;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+
+.product-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-color: #babfc3;
+}
+
+/* Image Area */
+.image-container {
+  height: 180px;
+  width: 100%;
+  background: #f4f4f4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Card Text & Button */
+.card-details {
+  padding: 15px;
+}
+
+.product-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 10px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #202223;
+}
+
+.generate-btn {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #babfc3;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #202223;
+  transition: all 0.2s;
+}
+
+.generate-btn:hover {
+  border-color: #008060;
+  color: #008060;
+  background: #f1f8f5;
+}
