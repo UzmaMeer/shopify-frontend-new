@@ -1,16 +1,30 @@
-// src/config.js
 
-// 1. Define your Backend URLs
-const PROD_URL = "https://shopify-ext.20thletter.com";
-const DEV_URL = "https://snakiest-edward-autochthonously.ngrok-free.dev";
+const FORCE_USE_NGROK = true; 
 
-// 2. Intelligence Logic: Check the browser's current address
-// If the hostname includes "20thletter.com", we are in Production.
-const isProduction = window.location.hostname.includes("20thletter.com");
+// 🟢 1. AWS Production URL (Keep this safe for later)
+const AWS_URL = "http://16.170.226.79:8000";
 
-// 3. Export the correct URL based on the check
-export const BACKEND_URL = isProduction ? PROD_URL : DEV_URL;
+// 🟠 2. Ngrok URL (Your Laptop)
+// I copied this exactly from your screenshot 👇
+const NGROK_URL = "https://snakiest-edward-autochthonously.ngrok-free.dev"; 
 
-// Optional: Log it so you can verify in browser console
-console.log(`🔌 App Environment: ${isProduction ? "PRODUCTION" : "DEVELOPMENT"}`);
-console.log(`🔗 Backend Connected: ${BACKEND_URL}`);
+// 3. Logic: Decide which one to use
+const isLocalhost = window.location.hostname === "localhost";
+
+let selectedBackend;
+
+if (isLocalhost) {
+    selectedBackend = NGROK_URL; // Localhost always uses Ngrok
+} else {
+    // We are on the Live Website (Firebase)
+    if (FORCE_USE_NGROK) {
+        selectedBackend = NGROK_URL; // FORCED: Live site talks to Laptop
+    } else {
+        selectedBackend = AWS_URL;   // STANDARD: Live site talks to AWS
+    }
+}
+
+export const BACKEND_URL = selectedBackend;
+
+console.log(`🔌 Mode: ${FORCE_USE_NGROK ? "DEBUG (Ngrok)" : "LIVE (AWS)"}`);
+console.log(`🔗 Connecting to: ${BACKEND_URL}`);

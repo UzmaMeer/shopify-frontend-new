@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, Circle, Trash2 } from 'lucide-react';
 import './PublishModal.css';
+import { BACKEND_URL } from '../config'; // 🟢 1. IMPORT ADDED (Critical Fix)
 
 // --- ICONS (SVG) ---
 const TikTokIcon = () => (
@@ -22,17 +23,15 @@ const FacebookIcon = () => (
   </svg>
 );
 
-// --- UPDATED COMPONENT ---
-// 🟢 FIXED: Accepting 'renderJobId' instead of 'jobId'
+// --- COMPONENT START ---
 const PublishModal = ({ onClose, renderJobId, isProcessing }) => {
   const [accounts, setAccounts] = useState([]);
   const [posting, setPosting] = useState(false);
   const [checking, setChecking] = useState(false);
   const [selected, setSelected] = useState({ instagram: true, facebook: true, tiktok: true });
 
-  // ⚠️ Ensure this URL matches your setup (http://127.0.0.1:8000 OR Ngrok URL)
-  // If you are using Ngrok for Shopify, this MUST be the Ngrok URL.
-  const BACKEND_URL = "http://127.0.0.1:8000"; 
+  // 🟢 2. REMOVED HARDCODED URL
+  // It now uses the BACKEND_URL imported from '../config'
 
   // --- 1. Fetch connected accounts ---
   const checkConnection = (isManual = false) => {
@@ -112,7 +111,6 @@ const PublishModal = ({ onClose, renderJobId, isProcessing }) => {
             'Content-Type': 'application/json',
             'ngrok-skip-browser-warning': 'true'
         },
-        // 🟢 FIXED: Using 'render_job_id' to match backend expectation
         body: JSON.stringify({ render_job_id: renderJobId, accounts: targets })
       });
       const result = await response.json();
