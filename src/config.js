@@ -1,27 +1,33 @@
+// 🟢 CONFIGURATION SETTINGS
+// Change this to 'false' ONLY when you are ready to use AWS again.
+const FORCE_NGROK = true; 
 
-const FORCE_USE_NGROK = true; 
-
-// 🟢 1. AWS Production URL (Keep this safe for later)
+// 1. Your Backend URLs
 const AWS_URL = "http://16.170.226.79:8000";
-const NGROK_URL = "https://snakiest-edward-autochthonously.ngrok-free.dev"; 
+const NGROK_URL = "https://snakiest-edward-autochthonously.ngrok-free.dev";
 
-// 3. Logic: Decide which one to use
+// 2. Logic to pick the correct backend
 const isLocalhost = window.location.hostname === "localhost";
 
 let selectedBackend;
 
-if (isLocalhost) {
-    selectedBackend = NGROK_URL; // Localhost always uses Ngrok
+if (FORCE_NGROK) {
+    // 🛡️ Safety Mode: If we are debugging or AWS is down, ALWAYS use Ngrok.
+    console.log("⚠️ FORCE_NGROK is ON: Using Tunnel");
+    selectedBackend = NGROK_URL;
+    
+} else if (isLocalhost) {
+    // 🏠 Localhost Mode: Local frontend always talks to Ngrok (to avoid mixed content)
+    console.log("🏠 Localhost detected: Using Ngrok");
+    selectedBackend = NGROK_URL;
+
 } else {
-   
-    if (FORCE_USE_NGROK) {
-        selectedBackend = NGROK_URL; // FORCED: Live site talks to Laptop
-    } else {
-        selectedBackend = AWS_URL;   // STANDARD: Live site talks to AWS
-    }
+    console.log("☁️ Live Site detected: Using AWS");
+    selectedBackend = AWS_URL;
 }
 
+// 3. Export it
 export const BACKEND_URL = selectedBackend;
 
-console.log(`🔌 Mode: ${FORCE_USE_NGROK ? "DEBUG (Ngrok)" : "LIVE (AWS)"}`);
-console.log(`🔗 Connecting to: ${BACKEND_URL}`);
+// 4. Debug print so you can see it in Chrome Console (F12)
+console.log(`🔗 FINAL CONNECTION URL: ${BACKEND_URL}`);
