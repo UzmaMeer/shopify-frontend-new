@@ -25,6 +25,7 @@
   flex-direction: column;
   overflow: hidden;
   animation: modalScaleUp 0.3s ease-out;
+  transition: all 0.3s ease-in-out; /* Smooth transition for fullscreen */
 }
 
 @keyframes modalScaleUp {
@@ -83,6 +84,7 @@
   position: relative;
 }
 
+/* 🟢 UPDATED: Video Container (Relative for Controls) */
 .video-container {
   width: 100%;
   height: 100%;
@@ -90,14 +92,87 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative; /* Essential for overlaying controls */
 }
 
 .final-video {
   height: 100%;       /* 👈 Forces video to take full height */
   width: 100%;        /* 👈 Forces video to take full width */
-  object-fit: contain; /* 👈 Ensures video isn't cropped, just fitted with black bars if needed */
+  object-fit: contain; /* 👈 Ensures video isn't cropped */
   outline: none;
   background: black;
+}
+
+/* 🟢 NEW: CUSTOM CONTROL BAR */
+.custom-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 70px;
+  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 15px;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Show controls on hover */
+.video-container:hover .custom-controls {
+  opacity: 1;
+}
+
+.ctrl-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: white;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.video-scrubber {
+  flex-grow: 1;
+  cursor: pointer;
+  height: 4px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 2px;
+  appearance: none; /* Remove default styling */
+}
+
+.video-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #008060; /* Shopify Green */
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.right-ctrls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.time-text {
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 60px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- LOADING STATE --- */
@@ -159,6 +234,9 @@
   background: white;
   color: #202223;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Space between icon and text */
 }
 
 .btn-action.secondary {
@@ -180,4 +258,30 @@
 .btn-action.btn-primary:hover {
   background: #006e52;
   box-shadow: 0 4px 8px rgba(0, 128, 96, 0.3);
+}
+
+/* 🟢 NEW: "FAKE" FULLSCREEN MODE OVERRIDES */
+/* This forces the modal to take up 100% of the viewport */
+.fullscreen-mode {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    z-index: 99999 !important;
+    background: black !important;
+}
+
+.fullscreen-mode .video-preview-area {
+    height: 100vh; /* Force video area to fill height */
+}
+
+/* Hide Header and Footer in Fullscreen to match native feel */
+.fullscreen-mode .modal-header,
+.fullscreen-mode .modal-footer {
+    display: none !important;
 }

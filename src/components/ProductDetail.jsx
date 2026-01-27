@@ -174,14 +174,15 @@ const ProductDetail = ({ productId, shopName, onBack }) => { // 🟢 Removed bac
             </div>
 
             <div className="custom-option">
-                <label>🎨 Video Theme:</label>
-                <select value={videoTheme} onChange={(e) => setVideoTheme(e.target.value)} className="custom-select">
-                    <option value="Modern">Modern (Clean & Static)</option>
-                    <option value="Dynamic">Dynamic (Zoom & Pan)</option>
-                    <option value="Cinematic">Cinematic (Black & White)</option>
-                </select>
-            </div>
-
+    <label>🎨 Video Theme:</label>
+    <select value={videoTheme} onChange={(e) => setVideoTheme(e.target.value)} className="custom-select">
+        <option value="Modern">Modern (Clean & Static)</option>
+        <option value="Dynamic">Dynamic (Pan & Zoom)</option> {/* Updated Text */}
+        <option value="Cinematic">Cinematic (Black & White)</option>
+        <option value="Retro">Retro (Sepia Vintage)</option> {/* 🟢 NEW */}
+        <option value="Flash">Flash (High Energy)</option>   {/* 🟢 NEW */}
+    </select>
+</div>
             <div className="custom-option">
                 <label>🎭 Script Tone:</label>
                 <select value={scriptTone} onChange={(e) => setScriptTone(e.target.value)} className="custom-select">

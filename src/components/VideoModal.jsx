@@ -1,18 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './VideoModal.css';
 import PublishModal from './PublishModal'; 
-import { BACKEND_URL } from '../config'; // 🟢 IMPORT ADDED
+import { BACKEND_URL } from '../config'; 
+import { Maximize, Minimize, Play, Pause, Share2, Download, ShoppingBag } from 'lucide-react'; // 🟢 Added ShoppingBag Icon
 
 const VideoModal = ({ 
-  product, 
-  shopName, 
-  selectedImages, 
-  onClose, 
-  voiceGender, 
-  duration, 
-  scriptTone, 
-  musicFile, 
-  videoTheme 
+  product, shopName, selectedImages, onClose, 
+  voiceGender, duration, scriptTone, musicFile, videoTheme 
 }) => {
   const [videoUrl, setVideoUrl] = useState(null);
   const [status, setStatus] = useState("idle"); 
@@ -21,33 +15,121 @@ const VideoModal = ({
   const [currentJobId, setCurrentJobId] = useState(null);
   const [showSocialModal, setShowSocialModal] = useState(false);
   
+  // Player State
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Downloading State
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // 🟢 NEW: Upload to Store State
+  const [isUploadingToStore, setIsUploadingToStore] = useState(false);
+
   const hasCalledRef = useRef(false);
   const videoRef = useRef(null); 
+  const containerRef = useRef(null);
 
-  // 🟢 REMOVED HARDCODED BACKEND_URL (Uses import now)
+  // --- 1. FORCE DOWNLOAD FUNCTION ---
+  const handleDownload = async () => {
+    if (!videoUrl) return;
+    setIsDownloading(true);
 
-  const handleMaximize = () => {
-    if (videoRef.current) {
-      if (videoRef.current.requestFullscreen) videoRef.current.requestFullscreen();
-      else if (videoRef.current.webkitRequestFullscreen) videoRef.current.webkitRequestFullscreen();
+    try {
+      const response = await fetch(videoUrl, {
+        headers: { "ngrok-skip-browser-warning": "true" }
+      });
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = videoUrl.split('/').pop() || 'ad-video.mp4';
+      
+      document.body.appendChild(a);
+      a.click();
+
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Download failed. Opening in new tab instead.");
+      window.open(videoUrl, '_blank');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
-  const shareToWhatsApp = () => {
-    if (!videoUrl) return alert("No video generated yet!");
-    const message = `Check out this AI Generated Video! 🚀\n${videoUrl}`;
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+  // 🟢 NEW: HANDLE ADD TO STOREFRONT
+  const handleAddToStore = async () => {
+    if (!videoUrl) return;
+    setIsUploadingToStore(true);
+    
+    const filename = videoUrl.split('/').pop(); // Extract "vid_xxxx.mp4"
+
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/upload-to-storefront`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', "ngrok-skip-browser-warning": "true" },
+            body: JSON.stringify({
+                shop: shopName,
+                product_id: product.id,
+                video_filename: filename
+            })
+        });
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            alert("✅ Video added to Product Gallery! Check your Storefront.");
+        } else {
+            alert("❌ Error: " + JSON.stringify(data));
+        }
+    } catch (e) {
+        alert("❌ Network Error: Is the backend running?");
+    } finally {
+        setIsUploadingToStore(false);
+    }
+  };
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) videoRef.current.pause();
+      else videoRef.current.play();
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+      if(videoRef.current.ended) setIsPlaying(false);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) setVideoDuration(videoRef.current.duration);
+  };
+
+  const handleSeek = (e) => {
+    const newTime = parseFloat(e.target.value);
+    if (videoRef.current) {
+      videoRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
   };
 
   const pollStatus = useCallback((jobId) => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`${BACKEND_URL}/api/check-status/${jobId}?t=${Date.now()}`, { // 🟢 USED HERE
+        const res = await fetch(`${BACKEND_URL}/api/check-status/${jobId}?t=${Date.now()}`, {
            headers: { "ngrok-skip-browser-warning": "true" }
         });
         const data = await res.json();
-        
         setProgress(data.progress || 0);
         
         if (data.status === "done") {
@@ -63,7 +145,6 @@ const VideoModal = ({
           setStatus("processing");
         }
       } catch (e) {
-        console.error("Polling error:", e);
         clearInterval(interval);
         setStatus("failed");
       }
@@ -73,15 +154,13 @@ const VideoModal = ({
   const startVideoGeneration = useCallback(async () => {
     setStatus("queued");
     setProgress(0);
-
+    
     const imagesToUse = (selectedImages && selectedImages.length > 0) 
         ? selectedImages 
         : (product.images ? product.images.map(img => img.src) : []);
 
     if (imagesToUse.length === 0) {
-        setStatus("failed");
-        setErrorMsg("No images selected or found for this product.");
-        return;
+        setStatus("failed"); setErrorMsg("No images selected."); return;
     }
     
     try {
@@ -94,31 +173,20 @@ const VideoModal = ({
       formData.append("script_tone", scriptTone || "Professional");
       formData.append("video_theme", videoTheme || "Modern");
       formData.append("shop_name", shopName || ""); 
+      if (musicFile) formData.append("music_file", musicFile);
 
-      if (musicFile) {
-        formData.append("music_file", musicFile);
-      }
-
-      const res = await fetch(`${BACKEND_URL}/api/start-video-generation`, { // 🟢 USED HERE
+      const res = await fetch(`${BACKEND_URL}/api/start-video-generation`, {
         method: 'POST',
         headers: { "ngrok-skip-browser-warning": "true" },
         body: formData 
       });
-
       const data = await res.json();
-      
       if (data.status === "queued" || data.status === "processing") {
-        setCurrentJobId(data.job_id);
-        pollStatus(data.job_id); 
+        setCurrentJobId(data.job_id); pollStatus(data.job_id); 
       } else {
-        setStatus("failed");
-        setErrorMsg("Failed to start rendering engine.");
+        setStatus("failed"); setErrorMsg("Failed to start.");
       }
-    } catch (e) {
-      console.error(e);
-      setStatus("failed");
-      setErrorMsg("Backend server connection failed.");
-    }
+    } catch (e) { setStatus("failed"); setErrorMsg("Backend error."); }
   }, [product, shopName, selectedImages, voiceGender, duration, scriptTone, musicFile, videoTheme, pollStatus]);
 
   useEffect(() => {
@@ -129,24 +197,20 @@ const VideoModal = ({
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <div className="modal-title">Creating Video ({videoTheme} Style)</div>
-          <div className="header-actions">
-            {status === "done" && (
-              <button className="maximize-btn" onClick={handleMaximize}>⛶</button>
-            )}
+      <div ref={containerRef} className={`modal-content ${isFullscreen ? 'fullscreen-mode' : ''}`}>
+        
+        {!isFullscreen && (
+            <div className="modal-header">
+            <div className="modal-title">Creating Video ({videoTheme})</div>
             <button className="close-btn" onClick={onClose}>&times;</button>
-          </div>
-        </div>
+            </div>
+        )}
 
         <div className="video-preview-area">
           {(status === "queued" || status === "processing") && (
             <div className="loading-state">
               <div className="spinner"></div>
-              <p className="status-text">
-                {status === "queued" ? "Analyzing Product..." : `Rendering Video: ${progress}%`}
-              </p>
+              <p className="status-text">{status === "queued" ? "Analyzing..." : `Rendering: ${progress}%`}</p>
               <div className="progress-container">
                 <div className="progress-bar-bg">
                   <div className="progress-bar-fill" style={{ width: `${progress}%` }}></div>
@@ -156,47 +220,85 @@ const VideoModal = ({
           )}
 
           {status === "failed" && (
-            <div className="error-state">
-                <span className="error-icon">⚠️</span>
-                <p>{errorMsg}</p>
-            </div>
+            <div className="error-state"><span className="error-icon">⚠️</span><p>{errorMsg}</p></div>
           )}
 
           {status === "done" && videoUrl && (
-            <div className="video-container">
-               <video ref={videoRef} controls autoPlay src={videoUrl} className="final-video" />
+            <div className="video-container" onClick={togglePlay}>
+               <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline
+                  src={videoUrl} 
+                  className="final-video"
+                  onTimeUpdate={handleTimeUpdate}
+                  onLoadedMetadata={handleLoadedMetadata}
+                  onEnded={() => setIsPlaying(false)}
+               />
+
+               <div className="custom-controls" onClick={(e) => e.stopPropagation()}>
+                  <button className="ctrl-btn" onClick={togglePlay}>
+                    {isPlaying ? <Pause size={20} fill="white" /> : <Play size={20} fill="white" />}
+                  </button>
+                  
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max={videoDuration} 
+                    value={currentTime} 
+                    onChange={handleSeek}
+                    className="video-scrubber"
+                  />
+
+                  <div className="right-ctrls">
+                    <span className="time-text">
+                        {Math.floor(currentTime)}s / {Math.floor(videoDuration)}s
+                    </span>
+                    <button className="ctrl-btn" onClick={toggleFullscreen}>
+                        {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                    </button>
+                  </div>
+               </div>
             </div>
           )}
         </div>
 
-        <div className="modal-footer">
-           {status === "done" ? (
-             <div className="action-row">
-                <button className="btn-action secondary" onClick={onClose}>Discard</button>
-                <div className="right-actions">
-                    <a href={videoUrl} download style={{textDecoration: 'none'}}>
-                        <button className="btn-action">⬇️ Download</button>
-                    </a>
+        {!isFullscreen && (
+            <div className="modal-footer">
+            {status === "done" ? (
+                <div className="action-row">
+                    <button className="btn-action secondary" onClick={onClose}>Discard</button>
+                    <div className="right-actions">
+                        <button className="btn-action" onClick={handleDownload} disabled={isDownloading}>
+                            <Download size={16}/> {isDownloading ? "Saving..." : "Download"}
+                        </button>
 
-                    <button className="btn-action" onClick={shareToWhatsApp} style={{backgroundColor: '#25D366', borderColor: '#25D366', color: 'white'}}>Share</button>
+                        {/* 🟢 NEW: Add to Store Button */}
+                        <button 
+                            className="btn-action" 
+                            onClick={handleAddToStore} 
+                            disabled={isUploadingToStore} 
+                            style={{background: '#f4f4f4', border: '1px solid #ccc', color: '#333'}}
+                        >
+                           <ShoppingBag size={16}/> {isUploadingToStore ? "Uploading..." : "Add to Store"}
+                        </button>
 
-                    <button className="btn-action btn-primary" onClick={() => setShowSocialModal(true)}>🚀 Publish</button>
+                        <button className="btn-action btn-primary" onClick={() => setShowSocialModal(true)}>
+                            <Share2 size={16} /> Publish
+                        </button>
+                    </div>
                 </div>
-             </div>
-           ) : (
-             <div className="action-row footer-right">
-               <button className="btn-action secondary" onClick={onClose}>Cancel</button>
-             </div>
-           )}
-        </div>
+            ) : (
+                <div className="action-row footer-right">
+                <button className="btn-action secondary" onClick={onClose}>Cancel</button>
+                </div>
+            )}
+            </div>
+        )}
       </div>
 
       {showSocialModal && (
-        <PublishModal 
-          videoFilename={videoUrl?.split('/').pop()} 
-          renderJobId={currentJobId} 
-          onClose={() => setShowSocialModal(false)} 
-        />
+        <PublishModal videoFilename={videoUrl?.split('/').pop()} renderJobId={currentJobId} onClose={() => setShowSocialModal(false)} />
       )}
     </div>
   );
