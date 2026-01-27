@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './VideoModal.css';
 import PublishModal from './PublishModal'; 
 import { BACKEND_URL } from '../config'; 
-import { Maximize, Minimize, Play, Pause, Share2, Download, ShoppingBag } from 'lucide-react'; // 🟢 Added ShoppingBag Icon
+import { Maximize, Minimize, Play, Pause, Share2, Download, ShoppingBag } from 'lucide-react';
 
 const VideoModal = ({ 
   product, shopName, selectedImages, onClose, 
-  voiceGender, duration, scriptTone, musicFile, videoTheme 
+  voiceGender, duration, scriptTone, musicFile, videoTheme,
+  // 🟢 NEW PROPS: Received from ProductDetail.jsx
+  customScript, userVoiceFile 
 }) => {
   const [videoUrl, setVideoUrl] = useState(null);
   const [status, setStatus] = useState("idle"); 
@@ -21,53 +23,43 @@ const VideoModal = ({
   const [videoDuration, setVideoDuration] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   
-  // Downloading State
+  // Loading & Action States
   const [isDownloading, setIsDownloading] = useState(false);
-
-  // 🟢 NEW: Upload to Store State
   const [isUploadingToStore, setIsUploadingToStore] = useState(false);
 
   const hasCalledRef = useRef(false);
   const videoRef = useRef(null); 
   const containerRef = useRef(null);
 
-  // --- 1. FORCE DOWNLOAD FUNCTION ---
+  // --- 1. DOWNLOAD LOGIC ---
   const handleDownload = async () => {
     if (!videoUrl) return;
     setIsDownloading(true);
-
     try {
-      const response = await fetch(videoUrl, {
-        headers: { "ngrok-skip-browser-warning": "true" }
-      });
+      const response = await fetch(videoUrl, { headers: { "ngrok-skip-browser-warning": "true" } });
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
       a.download = videoUrl.split('/').pop() || 'ad-video.mp4';
-      
       document.body.appendChild(a);
       a.click();
-
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
       console.error("Download failed:", error);
-      alert("Download failed. Opening in new tab instead.");
       window.open(videoUrl, '_blank');
     } finally {
       setIsDownloading(false);
     }
   };
 
-  // 🟢 NEW: HANDLE ADD TO STOREFRONT
+  // --- 2. ADD TO STOREFRONT LOGIC ---
   const handleAddToStore = async () => {
     if (!videoUrl) return;
     setIsUploadingToStore(true);
-    
-    const filename = videoUrl.split('/').pop(); // Extract "vid_xxxx.mp4"
-
+    const filename = videoUrl.split('/').pop(); 
     try {
         const res = await fetch(`${BACKEND_URL}/api/upload-to-storefront`, {
             method: 'POST',
@@ -79,23 +71,20 @@ const VideoModal = ({
             })
         });
         const data = await res.json();
-        
         if (data.status === 'success') {
-            alert("✅ Video added to Product Gallery! Check your Storefront.");
+            alert("✅ Video added to Product Gallery!");
         } else {
             alert("❌ Error: " + JSON.stringify(data));
         }
     } catch (e) {
-        alert("❌ Network Error: Is the backend running?");
+        alert("❌ Network Error.");
     } finally {
         setIsUploadingToStore(false);
     }
   };
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-  };
-
+  // --- 3. PLAYER CONTROLS ---
+  const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
   const togglePlay = () => {
     if (videoRef.current) {
       if (isPlaying) videoRef.current.pause();
@@ -103,18 +92,15 @@ const VideoModal = ({
       setIsPlaying(!isPlaying);
     }
   };
-
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
       if(videoRef.current.ended) setIsPlaying(false);
     }
   };
-
   const handleLoadedMetadata = () => {
     if (videoRef.current) setVideoDuration(videoRef.current.duration);
   };
-
   const handleSeek = (e) => {
     const newTime = parseFloat(e.target.value);
     if (videoRef.current) {
@@ -123,11 +109,12 @@ const VideoModal = ({
     }
   };
 
+  // --- 4. GENERATION & POLLING LOGIC ---
   const pollStatus = useCallback((jobId) => {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`${BACKEND_URL}/api/check-status/${jobId}?t=${Date.now()}`, {
-           headers: { "ngrok-skip-browser-warning": "true" }
+            headers: { "ngrok-skip-browser-warning": "true" }
         });
         const data = await res.json();
         setProgress(data.progress || 0);
@@ -173,6 +160,10 @@ const VideoModal = ({
       formData.append("script_tone", scriptTone || "Professional");
       formData.append("video_theme", videoTheme || "Modern");
       formData.append("shop_name", shopName || ""); 
+
+      // 🟢 5. APPEND NEW CUSTOM FIELDS
+      if (customScript) formData.append("custom_script", customScript);
+      if (userVoiceFile) formData.append("user_voice_audio", userVoiceFile);
       if (musicFile) formData.append("music_file", musicFile);
 
       const res = await fetch(`${BACKEND_URL}/api/start-video-generation`, {
@@ -187,7 +178,7 @@ const VideoModal = ({
         setStatus("failed"); setErrorMsg("Failed to start.");
       }
     } catch (e) { setStatus("failed"); setErrorMsg("Backend error."); }
-  }, [product, shopName, selectedImages, voiceGender, duration, scriptTone, musicFile, videoTheme, pollStatus]);
+  }, [product, shopName, selectedImages, voiceGender, duration, scriptTone, musicFile, videoTheme, customScript, userVoiceFile, pollStatus]);
 
   useEffect(() => {
     if (hasCalledRef.current) return;
@@ -219,41 +210,22 @@ const VideoModal = ({
             </div>
           )}
 
-          {status === "failed" && (
-            <div className="error-state"><span className="error-icon">⚠️</span><p>{errorMsg}</p></div>
-          )}
+          {status === "failed" && <div className="error-state">⚠️<p>{errorMsg}</p></div>}
 
           {status === "done" && videoUrl && (
             <div className="video-container" onClick={togglePlay}>
                <video 
-                  ref={videoRef} 
-                  autoPlay 
-                  playsInline
-                  src={videoUrl} 
-                  className="final-video"
-                  onTimeUpdate={handleTimeUpdate}
-                  onLoadedMetadata={handleLoadedMetadata}
+                  ref={videoRef} autoPlay playsInline src={videoUrl} className="final-video"
+                  onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata}
                   onEnded={() => setIsPlaying(false)}
                />
-
                <div className="custom-controls" onClick={(e) => e.stopPropagation()}>
                   <button className="ctrl-btn" onClick={togglePlay}>
                     {isPlaying ? <Pause size={20} fill="white" /> : <Play size={20} fill="white" />}
                   </button>
-                  
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max={videoDuration} 
-                    value={currentTime} 
-                    onChange={handleSeek}
-                    className="video-scrubber"
-                  />
-
+                  <input type="range" min="0" max={videoDuration} value={currentTime} onChange={handleSeek} className="video-scrubber" />
                   <div className="right-ctrls">
-                    <span className="time-text">
-                        {Math.floor(currentTime)}s / {Math.floor(videoDuration)}s
-                    </span>
+                    <span className="time-text">{Math.floor(currentTime)}s / {Math.floor(videoDuration)}s</span>
                     <button className="ctrl-btn" onClick={toggleFullscreen}>
                         {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
                     </button>
@@ -272,17 +244,9 @@ const VideoModal = ({
                         <button className="btn-action" onClick={handleDownload} disabled={isDownloading}>
                             <Download size={16}/> {isDownloading ? "Saving..." : "Download"}
                         </button>
-
-                        {/* 🟢 NEW: Add to Store Button */}
-                        <button 
-                            className="btn-action" 
-                            onClick={handleAddToStore} 
-                            disabled={isUploadingToStore} 
-                            style={{background: '#f4f4f4', border: '1px solid #ccc', color: '#333'}}
-                        >
+                        <button className="btn-action" onClick={handleAddToStore} disabled={isUploadingToStore} style={{background: '#f4f4f4', border: '1px solid #ccc', color: '#333'}}>
                            <ShoppingBag size={16}/> {isUploadingToStore ? "Uploading..." : "Add to Store"}
                         </button>
-
                         <button className="btn-action btn-primary" onClick={() => setShowSocialModal(true)}>
                             <Share2 size={16} /> Publish
                         </button>
@@ -290,7 +254,7 @@ const VideoModal = ({
                 </div>
             ) : (
                 <div className="action-row footer-right">
-                <button className="btn-action secondary" onClick={onClose}>Cancel</button>
+                    <button className="btn-action secondary" onClick={onClose}>Cancel</button>
                 </div>
             )}
             </div>

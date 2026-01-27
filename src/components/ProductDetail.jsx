@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import './ProductDetail.css'; 
 import VideoModal from './VideoModal';
-import { BACKEND_URL } from '../config'; // 🟢 IMPORT ADDED
+import { BACKEND_URL } from '../config'; 
 
-const ProductDetail = ({ productId, shopName, onBack }) => { // 🟢 Removed backendUrl prop
+const ProductDetail = ({ productId, shopName, onBack }) => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null); 
   const [showVideoModal, setShowVideoModal] = useState(false);
   
+  // Existing Generation States
   const [selectedVideoImages, setSelectedVideoImages] = useState([]); 
   const [voiceGender, setVoiceGender] = useState('female');
   const [duration, setDuration] = useState(15);
@@ -16,13 +17,17 @@ const ProductDetail = ({ productId, shopName, onBack }) => { // 🟢 Removed bac
   const [videoTheme, setVideoTheme] = useState('Modern');
   const [musicFile, setMusicFile] = useState(null);
 
+  // 🟢 NEW: Custom Logic States
+  const [customScript, setCustomScript] = useState('');
+  const [userVoiceFile, setUserVoiceFile] = useState(null);
+
   const maxImagesAllowed = Math.floor(duration / 3);
 
   // 1. Fetch Product Details
   useEffect(() => {
     const fetchDetails = async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/api/products?shop=${shopName}`, { // 🟢 USED HERE
+        const response = await fetch(`${BACKEND_URL}/api/products?shop=${shopName}`, {
           method: "GET",
           headers: { 
               "Content-Type": "application/json", 
@@ -35,9 +40,7 @@ const ProductDetail = ({ productId, shopName, onBack }) => { // 🟢 Removed bac
           if (foundProduct) {
             setProduct(foundProduct);
             const allImages = foundProduct.images ? foundProduct.images.map(img => img.src) : [];
-            
             if (allImages.length > 0) setSelectedImage(allImages[0]);
-            
             const initialMax = 5; 
             setSelectedVideoImages(allImages.slice(0, initialMax)); 
           }
@@ -47,17 +50,15 @@ const ProductDetail = ({ productId, shopName, onBack }) => { // 🟢 Removed bac
     if (productId) fetchDetails();
   }, [productId, shopName]);
 
-  // 2. Background Image Caching
+  // 2. Image Caching
   useEffect(() => {
     if (product && product.images && product.images.length > 0) {
         const imagesToCache = product.images.map(img => img.src);
-        
-        fetch(`${BACKEND_URL}/api/cache-images`, { // 🟢 USED HERE
+        fetch(`${BACKEND_URL}/api/cache-images`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ images: imagesToCache })
         })
-        .then(() => console.log("🚀 Background Caching Started"))
         .catch(err => console.warn("Caching Warning:", err));
     }
   }, [product]); 
@@ -95,13 +96,15 @@ const ProductDetail = ({ productId, shopName, onBack }) => { // 🟢 Removed bac
         <VideoModal 
           product={product}
           shopName={shopName}
-          // 🟢 REMOVED backendUrl PROP (Not needed anymore)
           selectedImages={selectedVideoImages}
           voiceGender={voiceGender}
           duration={duration}
           scriptTone={scriptTone}
           videoTheme={videoTheme}
           musicFile={musicFile}
+          // 🟢 Pass new custom props to the Modal
+          customScript={customScript}
+          userVoiceFile={userVoiceFile}
           onClose={() => setShowVideoModal(false)} 
         />
       )}
@@ -113,7 +116,6 @@ const ProductDetail = ({ productId, shopName, onBack }) => { // 🟢 Removed bac
           <div className="main-image-frame">
             <img src={selectedImage || 'https://via.placeholder.com/600'} alt="Main Product" />
           </div>
-          
           <div className="thumbnails-grid">
             {images.map((img) => {
               const isSelected = selectedVideoImages.includes(img.src);
@@ -121,21 +123,18 @@ const ProductDetail = ({ productId, shopName, onBack }) => { // 🟢 Removed bac
                 <div key={img.id} style={{position: 'relative', cursor: 'pointer'}}>
                     <img 
                         src={img.src} 
-                        alt={`Thumbnail ${img.id}`} 
                         className={`thumb-img ${selectedImage === img.src ? 'active-thumb' : ''}`}
                         onClick={() => setSelectedImage(img.src)} 
                         style={{opacity: isSelected ? 1 : 0.4, filter: isSelected ? 'none' : 'grayscale(100%)'}} 
                     />
-                    
                     <div 
                         onClick={(e) => { e.stopPropagation(); toggleImageSelection(img.src); }}
                         style={{
-                            position: 'absolute', top: '5px', right: '5px', 
-                            width: '24px', height: '24px', borderRadius: '50%',
-                            backgroundColor: isSelected ? '#008060' : 'white',
-                            border: isSelected ? 'none' : '2px solid #ccc',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            zIndex: 10, boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                            position: 'absolute', top: '5px', right: '5px', width: '24px', height: '24px', 
+                            borderRadius: '50%', backgroundColor: isSelected ? '#008060' : 'white',
+                            border: isSelected ? 'none' : '2px solid #ccc', display: 'flex', 
+                            alignItems: 'center', justifyContent: 'center', zIndex: 10,
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
                         }}
                     >
                         {isSelected && <span style={{color:'white', fontSize:'14px', fontWeight:'bold'}}>✓</span>}
@@ -144,9 +143,6 @@ const ProductDetail = ({ productId, shopName, onBack }) => { // 🟢 Removed bac
               );
             })}
           </div>
-          <p style={{fontSize:'12px', color:'#666', marginTop:'8px', textAlign:'center'}}>
-            ℹ️ Selected: <b>{selectedVideoImages.length}</b> / {maxImagesAllowed} (Max)
-          </p>
         </div>
 
         <div className="product-info-panel">
@@ -155,10 +151,36 @@ const ProductDetail = ({ productId, shopName, onBack }) => { // 🟢 Removed bac
           <div className="product-price"><span>{currency} {price}</span></div>
 
           <div className="ai-action-box">
-            <h3 style={{fontSize:'16px', marginBottom:'15px'}}>✨ AI Video Studio</h3>
+            <h3 style={{fontSize:'18px', marginBottom:'15px'}}>✨ AI Video Studio</h3>
             
+            {/* 🟢 CUSTOM SCRIPT BOX */}
             <div className="custom-option">
-                <label>🗣️ Narrator:</label>
+                <label>📝 Custom Script / Instructions:</label>
+                <textarea 
+                    placeholder="Type exactly what the narrator should say (Optional)..." 
+                    value={customScript} 
+                    onChange={(e) => setCustomScript(e.target.value)} 
+                    className="custom-select"
+                    style={{height: '80px', resize: 'none', paddingTop: '10px'}}
+                />
+            </div>
+
+            {/* 🟢 USER VOICE UPLOAD */}
+            <div className="custom-option">
+                <label>🎙️ Use Your Own Voice (Optional):</label>
+                <input 
+                    type="file" 
+                    accept="audio/*" 
+                    onChange={(e) => setUserVoiceFile(e.target.files[0])} 
+                    className="file-input" 
+                />
+                <small style={{fontSize:'10px', color:'#666', display:'block', marginTop:'4px'}}>
+                    *Overrides Narrator selection if uploaded.
+                </small>
+            </div>
+
+            <div className="custom-option">
+                <label>🗣️ Narrator Selection:</label>
                 <div className="radio-group">
                     <label><input type="radio" name="voice" value="female" checked={voiceGender === 'female'} onChange={(e) => setVoiceGender(e.target.value)} /> 👩 Female</label>
                     <label><input type="radio" name="voice" value="male" checked={voiceGender === 'male'} onChange={(e) => setVoiceGender(e.target.value)} /> 👨 Male</label>
@@ -168,34 +190,21 @@ const ProductDetail = ({ productId, shopName, onBack }) => { // 🟢 Removed bac
             <div className="custom-option">
                 <label>⏱️ Duration: <b>{duration}s</b></label>
                 <input type="range" min="10" max="60" step="5" value={duration} onChange={handleDurationChange} className="slider" />
-                <div style={{fontSize: '11px', color: '#e11d48', marginTop: '5px', fontWeight: '600'}}>
-                    *Max Images Allowed: {maxImagesAllowed}
-                </div>
             </div>
 
             <div className="custom-option">
-    <label>🎨 Video Theme:</label>
-    <select value={videoTheme} onChange={(e) => setVideoTheme(e.target.value)} className="custom-select">
-        <option value="Modern">Modern (Clean & Static)</option>
-        <option value="Dynamic">Dynamic (Pan & Zoom)</option> {/* Updated Text */}
-        <option value="Cinematic">Cinematic (Black & White)</option>
-        <option value="Retro">Retro (Sepia Vintage)</option> {/* 🟢 NEW */}
-        <option value="Flash">Flash (High Energy)</option>   {/* 🟢 NEW */}
-    </select>
-</div>
-            <div className="custom-option">
-                <label>🎭 Script Tone:</label>
-                <select value={scriptTone} onChange={(e) => setScriptTone(e.target.value)} className="custom-select">
-                    <option value="Professional">Professional & Clean</option>
-                    <option value="Funny">Funny & Witty</option>
-                    <option value="Excited">High Energy / Hype</option>
-                    <option value="Luxury">Luxury & Elegant</option>
-                    <option value="Urgent">Urgent (Sale Ending)</option>
+                <label>🎨 Video Theme:</label>
+                <select value={videoTheme} onChange={(e) => setVideoTheme(e.target.value)} className="custom-select">
+                    <option value="Modern">Modern (Clean & Static)</option>
+                    <option value="Dynamic">Dynamic (Pan & Zoom)</option>
+                    <option value="Cinematic">Cinematic (Black & White)</option>
+                    <option value="Retro">Retro (Sepia Vintage)</option>
+                    <option value="Flash">Flash (High Energy)</option>
                 </select>
             </div>
 
             <div className="custom-option">
-                <label>🎵 Custom Music (Optional):</label>
+                <label>🎵 Background Music (Optional):</label>
                 <input type="file" accept="audio/*" onChange={(e) => setMusicFile(e.target.files[0])} className="file-input" />
             </div>
 
