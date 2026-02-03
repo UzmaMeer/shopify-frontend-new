@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './VideoModal.css';
 import PublishModal from './PublishModal'; 
 import { BACKEND_URL } from '../config'; 
-import { Maximize, Minimize, Play, Pause, Share2, Download, ShoppingBag } from 'lucide-react';
+import { 
+  Maximize, Minimize, Play, Pause, Share2, 
+  Download, ShoppingBag, MessageCircle // 🟢 Added MessageCircle for WhatsApp
+} from 'lucide-react';
 
 const VideoModal = ({ 
   product, shopName, selectedImages, onClose, 
   voiceGender, duration, scriptTone, musicFile, videoTheme,
-  // 🟢 NEW PROPS: Received from ProductDetail.jsx
   customScript, userVoiceFile 
 }) => {
   const [videoUrl, setVideoUrl] = useState(null);
@@ -31,7 +33,15 @@ const VideoModal = ({
   const videoRef = useRef(null); 
   const containerRef = useRef(null);
 
-  // --- 1. DOWNLOAD LOGIC ---
+  // --- 1. WHATSAPP SHARE LOGIC ---
+  const handleWhatsAppShare = () => {
+    if (!videoUrl) return;
+    const shareText = `Check out this product video for ${product.title}: ${videoUrl}`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  // --- 2. DOWNLOAD LOGIC ---
   const handleDownload = async () => {
     if (!videoUrl) return;
     setIsDownloading(true);
@@ -55,7 +65,7 @@ const VideoModal = ({
     }
   };
 
-  // --- 2. ADD TO STOREFRONT LOGIC ---
+  // --- 3. ADD TO STOREFRONT LOGIC ---
   const handleAddToStore = async () => {
     if (!videoUrl) return;
     setIsUploadingToStore(true);
@@ -67,6 +77,7 @@ const VideoModal = ({
             body: JSON.stringify({
                 shop: shopName,
                 product_id: product.id,
+                product_title: product.title,
                 video_filename: filename
             })
         });
@@ -83,7 +94,7 @@ const VideoModal = ({
     }
   };
 
-  // --- 3. PLAYER CONTROLS ---
+  // --- 4. PLAYER CONTROLS ---
   const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
   const togglePlay = () => {
     if (videoRef.current) {
@@ -109,7 +120,7 @@ const VideoModal = ({
     }
   };
 
-  // --- 4. GENERATION & POLLING LOGIC ---
+  // --- 5. GENERATION & POLLING LOGIC ---
   const pollStatus = useCallback((jobId) => {
     const interval = setInterval(async () => {
       try {
@@ -161,7 +172,7 @@ const VideoModal = ({
       formData.append("video_theme", videoTheme || "Modern");
       formData.append("shop_name", shopName || ""); 
 
-      // 🟢 5. APPEND NEW CUSTOM FIELDS
+      // 🟢 CUSTOM FIELDS
       if (customScript) formData.append("custom_script", customScript);
       if (userVoiceFile) formData.append("user_voice_audio", userVoiceFile);
       if (musicFile) formData.append("music_file", musicFile);
@@ -244,9 +255,20 @@ const VideoModal = ({
                         <button className="btn-action" onClick={handleDownload} disabled={isDownloading}>
                             <Download size={16}/> {isDownloading ? "Saving..." : "Download"}
                         </button>
+                        
                         <button className="btn-action" onClick={handleAddToStore} disabled={isUploadingToStore} style={{background: '#f4f4f4', border: '1px solid #ccc', color: '#333'}}>
                            <ShoppingBag size={16}/> {isUploadingToStore ? "Uploading..." : "Add to Store"}
                         </button>
+
+                        {/* 🟢 WHATSAPP SHARE BUTTON */}
+                        <button 
+                          className="btn-action" 
+                          onClick={handleWhatsAppShare}
+                          style={{background: '#25D366', color: 'white', border: 'none'}}
+                        >
+                          <MessageCircle size={16} /> WhatsApp
+                        </button>
+
                         <button className="btn-action btn-primary" onClick={() => setShowSocialModal(true)}>
                             <Share2 size={16} /> Publish
                         </button>

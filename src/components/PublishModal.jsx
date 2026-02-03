@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, Circle, Trash2 } from 'lucide-react';
 import './PublishModal.css';
-import { BACKEND_URL } from '../config'; // 🟢 1. IMPORT ADDED (Critical Fix)
+// 🟢 1. Dynamic Configuration Import
+// This ensures the modal always talks to the correct backend (Ngrok or Production)
+import { BACKEND_URL } from '../config'; 
 
 // --- ICONS (SVG) ---
 const TikTokIcon = () => (
@@ -24,16 +26,15 @@ const FacebookIcon = () => (
 );
 
 // --- COMPONENT START ---
-const PublishModal = ({ onClose, renderJobId, isProcessing }) => {
+// 🚀 Critical Prop: 'productId' is required here to generate the "Shop Now" link.
+const PublishModal = ({ onClose, renderJobId, isProcessing, productId }) => {
   const [accounts, setAccounts] = useState([]);
   const [posting, setPosting] = useState(false);
   const [checking, setChecking] = useState(false);
   const [selected, setSelected] = useState({ instagram: true, facebook: true, tiktok: true });
 
-  // 🟢 2. REMOVED HARDCODED URL
-  // It now uses the BACKEND_URL imported from '../config'
-
-  // --- 1. Fetch connected accounts ---
+  // --- 1. Fetch Connected Accounts ---
+  // Checks the backend to see which social accounts (FB, Insta, TikTok) are linked.
   const checkConnection = (isManual = false) => {
     if(isManual) setChecking(true);
     
@@ -48,7 +49,7 @@ const PublishModal = ({ onClose, renderJobId, isProcessing }) => {
       .then(data => {
         if (data.status === 'success') {
           setAccounts(data.accounts || []);
-          if (isManual) alert("✅ Status Updated!");
+          if (isManual) alert("✅ Account Status Updated!");
         }
         setChecking(false);
       })
@@ -60,6 +61,7 @@ const PublishModal = ({ onClose, renderJobId, isProcessing }) => {
 
   useEffect(() => {
     checkConnection(false);
+    // Listen for messages from the popup login window
     const handleMessage = (event) => {
       if (event.data === 'login-success') {
         checkConnection(false); 
@@ -70,6 +72,7 @@ const PublishModal = ({ onClose, renderJobId, isProcessing }) => {
   }, []);
 
   // --- 2. Handle Login Popup ---
+  // Opens a separate window for OAuth (Facebook/TikTok login)
   const handleConnect = (platform) => {
     const url = `${BACKEND_URL}/login/${platform}`;
     const w = 500, h = 600;
@@ -89,14 +92,14 @@ const PublishModal = ({ onClose, renderJobId, isProcessing }) => {
             headers: { "ngrok-skip-browser-warning": "true" }
         });
         setAccounts(prev => prev.filter(acc => acc.platform !== platform));
-    } catch (err) { alert("Backend error."); }
+    } catch (err) { alert("Backend communication error."); }
   };
 
   const toggleSelection = (platform) => {
     setSelected(prev => ({ ...prev, [platform]: !prev[platform] }));
   };
 
-  // --- 4. Handle Publish ---
+  // --- 4. Handle Publish (The "Shop Now" Logic) ---
   const handlePublish = async () => {
     const connectedPlatforms = accounts.map(a => a.platform);
     const targets = Object.keys(selected).filter(p => selected[p] === true && connectedPlatforms.includes(p));
@@ -111,21 +114,28 @@ const PublishModal = ({ onClose, renderJobId, isProcessing }) => {
             'Content-Type': 'application/json',
             'ngrok-skip-browser-warning': 'true'
         },
-        body: JSON.stringify({ render_job_id: renderJobId, accounts: targets })
+        // 🚀 SHOP NOW PAYLOAD:
+        // We pass 'product_id' to the backend. The Python backend uses this ID
+        // to generate the "Shop Now" button on Facebook and Product Tags on Instagram.
+        body: JSON.stringify({ 
+            render_job_id: renderJobId, 
+            accounts: targets,
+            product_id: productId 
+        })
       });
       const result = await response.json();
       
       if(result.status === 'queued') {
-         alert("✅ Publishing Queued! You can close this window. We'll upload the video automatically when it finishes.");
-         onClose();
+          alert("✅ Publishing Queued! You can close this window. We'll upload the video automatically when it finishes.");
+          onClose();
       } else if (result.status === 'completed') {
-         alert("✅ Published Successfully!");
-         onClose();
+          alert("✅ Published Successfully!");
+          onClose();
       } else {
-         alert("⚠️ Error: " + JSON.stringify(result));
+          alert("⚠️ Error: " + JSON.stringify(result));
       }
     } catch (error) { 
-        alert("❌ Backend Error: Is Python running?"); 
+        alert("❌ Backend Error: Is your Python server running?"); 
     }
     setPosting(false);
   };

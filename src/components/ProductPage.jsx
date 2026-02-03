@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import './ProductDetail.css';
-import { BACKEND_URL } from '../config'; // 🟢 IMPORT ADDED
+import { BACKEND_URL } from '../config'; 
 
-const ProductPage = ({ onSelectProduct, shopName }) => { // 🟢 Removed backendUrl prop
+const ProductPage = ({ onSelectProduct, shopName }) => { 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -10,10 +10,12 @@ const ProductPage = ({ onSelectProduct, shopName }) => { // 🟢 Removed backend
 
   const fetchProducts = useCallback(async (query = "") => {
     setLoading(true);
+    // If shopName is missing, we cannot fetch data
     if (!shopName) return;
 
     try {
-      let url = `${BACKEND_URL}/api/products?shop=${shopName}`; // 🟢 USED HERE
+      // Construct the API URL
+      let url = `${BACKEND_URL}/api/products?shop=${shopName}`;
       if (query) url += `&search=${encodeURIComponent(query)}`;
 
       const response = await fetch(url, {
@@ -24,21 +26,43 @@ const ProductPage = ({ onSelectProduct, shopName }) => { // 🟢 Removed backend
         }
       });
 
+      // 🚀 PROFESSIONAL AUTO-FIX LOGIC 🚀
+      // Check if the Backend returned "401 Unauthorized" (Invalid Token).
+      // This happens immediately after the merchant uninstalls and re-installs the app.
+      if (response.status === 401) {
+        console.warn("⚠️ Token is Invalid/Expired (401). Initiating Auto-Repair...");
+        
+        // Construct the Auth URL with the 'force_auth=true' flag.
+        // This tells the backend: "Delete the old token and start a fresh login."
+        const authUrl = `${BACKEND_URL}/api/auth?shop=${shopName}&force_auth=true`;
+        
+        // Critical Step: Break out of the Shopify Iframe.
+        // We redirect the top window to the Auth URL.
+        // This feels like a quick page refresh to the user.
+        window.top.location.href = authUrl;
+        
+        return; // Stop execution here to prevent errors
+      }
+
       const data = await response.json();
 
+      // Fallback: If backend sends a 200 OK but with an error message
       if (data.error === "auth_needed") {
-        window.top.location.href = `${BACKEND_URL}/api/auth?shop=${shopName}`;
-        return;
+         console.warn("Manual auth requirement detected.");
+         window.top.location.href = `${BACKEND_URL}/api/auth?shop=${shopName}&force_auth=true`;
+         return;
       }
 
       setProducts(data.products || []);
+      setError(null); // Clear previous errors if successful
+
     } catch (err) {
       console.error("Fetch failed:", err);
       setError("Connection failed. Ensure Backend is running.");
     } finally {
       setLoading(false);
     }
-  }, [shopName]); // 🟢 Removed backendUrl dependency
+  }, [shopName]); 
 
   useEffect(() => {
     fetchProducts();
@@ -53,6 +77,7 @@ const ProductPage = ({ onSelectProduct, shopName }) => { // 🟢 Removed backend
 
   return (
     <div className="products-container" style={{padding: '20px'}}>
+      {/* --- Search Bar UI --- */}
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
         <h2>Your Products</h2>
         <form onSubmit={handleSearch} style={{display:'flex', gap:'10px'}}>
@@ -72,8 +97,9 @@ const ProductPage = ({ onSelectProduct, shopName }) => { // 🟢 Removed backend
         </form>
       </div>
 
+      {/* --- Products Grid --- */}
       {loading ? (
-        <div style={{padding:'40px', textAlign:'center'}}><h3>⏳ Loading...</h3></div>
+        <div style={{padding:'40px', textAlign:'center'}}><h3>⏳ Loading Products...</h3></div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
             {products.length === 0 ? <p>No products found.</p> : products.map((product) => (
