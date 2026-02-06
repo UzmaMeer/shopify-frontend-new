@@ -1,130 +1,227 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import './ProductDetail.css';
-import { BACKEND_URL } from '../config'; 
+import React, { useState, useEffect } from 'react';
+import {
+  Modal,
+  Text,
+  Button,
+  BlockStack,
+  InlineStack,
+  Box,
+  Icon,
+  Banner,
+  Checkbox
+} from '@shopify/polaris';
+import {
+  LogoTiktokIcon,
+  LogoInstagramIcon,
+  LogoFacebookIcon,
+  DeleteIcon,
+  RefreshIcon
+} from '@shopify/polaris-icons';
+import { BACKEND_URL } from '../config';
 
-const ProductPage = ({ onSelectProduct, shopName }) => { 
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
+const PublishModal = ({ onClose, renderJobId, isProcessing, productId }) => {
+  const [accounts, setAccounts] = useState([]);
+  const [posting, setPosting] = useState(false);
+  
+  // 🟢 FIX 1: We are now using 'checking' to show a spinner on the Refresh button
+  const [checking, setChecking] = useState(false);
+  
+  const [selected, setSelected] = useState({ instagram: true, facebook: true, tiktok: true });
 
-  const fetchProducts = useCallback(async (query = "") => {
-    setLoading(true);
-    // If shopName is missing, we cannot fetch data
-    if (!shopName) return;
-
-    try {
-      // Construct the API URL
-      let url = `${BACKEND_URL}/api/products?shop=${shopName}`;
-      if (query) url += `&search=${encodeURIComponent(query)}`;
-
-      const response = await fetch(url, {
+  // --- 1. Fetch Connected Accounts ---
+  const checkConnection = (isManual = false) => {
+    if(isManual) setChecking(true);
+    
+    fetch(`${BACKEND_URL}/api/social-accounts`, {
         method: "GET",
         headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true" 
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true" 
         }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          setAccounts(data.accounts || []);
+          if (isManual) alert("✅ Account Status Updated!");
+        }
+        setChecking(false);
+      })
+      .catch(err => { 
+        console.error("Fetch Error:", err); 
+        setChecking(false); 
       });
-
-      // 🚀 PROFESSIONAL AUTO-FIX LOGIC 🚀
-      // Check if the Backend returned "401 Unauthorized" (Invalid Token).
-      // This happens immediately after the merchant uninstalls and re-installs the app.
-      if (response.status === 401) {
-        console.warn("⚠️ Token is Invalid/Expired (401). Initiating Auto-Repair...");
-        
-        // Construct the Auth URL with the 'force_auth=true' flag.
-        // This tells the backend: "Delete the old token and start a fresh login."
-        const authUrl = `${BACKEND_URL}/api/auth?shop=${shopName}&force_auth=true`;
-        
-        // Critical Step: Break out of the Shopify Iframe.
-        // We redirect the top window to the Auth URL.
-        // This feels like a quick page refresh to the user.
-        window.top.location.href = authUrl;
-        
-        return; // Stop execution here to prevent errors
-      }
-
-      const data = await response.json();
-
-      // Fallback: If backend sends a 200 OK but with an error message
-      if (data.error === "auth_needed") {
-         console.warn("Manual auth requirement detected.");
-         window.top.location.href = `${BACKEND_URL}/api/auth?shop=${shopName}&force_auth=true`;
-         return;
-      }
-
-      setProducts(data.products || []);
-      setError(null); // Clear previous errors if successful
-
-    } catch (err) {
-      console.error("Fetch failed:", err);
-      setError("Connection failed. Ensure Backend is running.");
-    } finally {
-      setLoading(false);
-    }
-  }, [shopName]); 
-
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchProducts(searchTerm);
   };
 
-  if (error) return <div style={{padding:'20px', color:'red'}}>{error}</div>;
+  useEffect(() => {
+    checkConnection(false);
+    const handleMessage = (event) => {
+      if (event.data === 'login-success') {
+        checkConnection(false); 
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // --- 2. Handlers ---
+  const handleConnect = (platform) => {
+    const url = `${BACKEND_URL}/login/${platform}`;
+    const w = 500, h = 600;
+    const y = window.top.outerHeight / 2 + window.top.screenY - (h / 2);
+    const x = window.top.outerWidth / 2 + window.top.screenX - (w / 2);
+    window.open(url, 'ConnectSocial', `width=${w},height=${h},top=${y},left=${x}`);
+  };
+
+  const handleDisconnect = async (platform) => {
+    if (!window.confirm(`Are you sure you want to disconnect ${platform}?`)) return;
+    
+    try {
+        await fetch(`${BACKEND_URL}/api/disconnect/${platform}`, { 
+            method: 'DELETE',
+            headers: { "ngrok-skip-browser-warning": "true" }
+        });
+        setAccounts(prev => prev.filter(acc => acc.platform !== platform));
+    } catch (err) { alert("Backend communication error."); }
+  };
+
+  const toggleSelection = (platform) => {
+    setSelected(prev => ({ ...prev, [platform]: !prev[platform] }));
+  };
+
+  const handlePublish = async () => {
+    const connectedPlatforms = accounts.map(a => a.platform);
+    const targets = Object.keys(selected).filter(p => selected[p] === true && connectedPlatforms.includes(p));
+    
+    if (targets.length === 0) return alert("⚠️ Please select at least one connected account.");
+
+    setPosting(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/queue-publish`, {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({ 
+            render_job_id: renderJobId, 
+            accounts: targets,
+            product_id: productId 
+        })
+      });
+      const result = await response.json();
+      
+      if(result.status === 'queued') {
+          alert("✅ Publishing Queued!");
+          onClose();
+      } else if (result.status === 'completed') {
+          alert("✅ Published Successfully!");
+          onClose();
+      } else {
+          alert("⚠️ Error: " + JSON.stringify(result));
+      }
+    } catch (error) { 
+        alert("❌ Backend Error: Is your Python server running?"); 
+    }
+    setPosting(false);
+  };
+
+  const isConnected = (platform) => accounts.some(acc => acc.platform === platform);
+
+  // --- Render Row Helper ---
+  const renderPlatformRow = (platform, label, IconSource) => {
+      const connected = isConnected(platform);
+      const isSelected = selected[platform];
+
+      return (
+          <Box
+            padding="400"
+            borderWidth="025"
+            borderColor="border"
+            borderRadius="200"
+            background={connected && isSelected ? 'bg-surface-secondary' : 'bg-surface'}
+          >
+            <InlineStack align="space-between" blockAlign="center">
+                <InlineStack gap="300" blockAlign="center">
+                     <div style={{width: 30, height: 30, display:'flex', alignItems:'center'}}>
+                        <Icon source={IconSource} tone="base"/>
+                     </div>
+                     <Text variant="bodyMd" fontWeight="bold">{label}</Text>
+                </InlineStack>
+
+                {connected ? (
+                    <InlineStack gap="400" blockAlign="center">
+                         <Checkbox
+                            label="Post"
+                            labelHidden
+                            checked={isSelected}
+                            onChange={() => toggleSelection(platform)}
+                        />
+                        <div style={{borderLeft: '1px solid #dfe3e8', height: '24px', paddingLeft: '10px'}}>
+                            <Button
+                                icon={DeleteIcon}
+                                tone="critical"
+                                variant="plain"
+                                onClick={() => handleDisconnect(platform)}
+                                accessibilityLabel="Disconnect"
+                            />
+                        </div>
+                    </InlineStack>
+                ) : (
+                    <Button onClick={() => handleConnect(platform)} size="slim">Connect</Button>
+                )}
+            </InlineStack>
+          </Box>
+      );
+  };
 
   return (
-    <div className="products-container" style={{padding: '20px'}}>
-      {/* --- Search Bar UI --- */}
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
-        <h2>Your Products</h2>
-        <form onSubmit={handleSearch} style={{display:'flex', gap:'10px'}}>
-            <input 
-                type="text" 
-                placeholder="Search products..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{padding:'10px', borderRadius:'6px', border:'1px solid #ccc', width:'250px'}}
-            />
-            <button 
-                type="submit"
-                style={{padding:'10px 20px', background:'#008060', color:'white', border:'none', borderRadius:'6px', cursor:'pointer'}}
-            >
-                Search
-            </button>
-        </form>
-      </div>
+    <Modal
+        open={true}
+        onClose={onClose}
+        title={isProcessing ? "Queue Auto-Publish" : "Publish Video"}
+        primaryAction={{
+            content: posting ? 'Processing...' : (isProcessing ? 'Queue Publish' : 'Publish Now'),
+            onAction: handlePublish,
+            loading: posting,
+        }}
+        secondaryActions={[
+            {
+                content: 'Cancel',
+                onAction: onClose,
+            },
+        ]}
+    >
+        <Modal.Section>
+            <BlockStack gap="400">
+                {isProcessing ? (
+                    <Banner tone="info">
+                        <p>Your video is still rendering. Select accounts below, and we will automatically publish it once it finishes.</p>
+                    </Banner>
+                ) : (
+                    <Banner tone="success">
+                        <p>Video is ready! Select platforms to publish immediately.</p>
+                    </Banner>
+                )}
 
-      {/* --- Products Grid --- */}
-      {loading ? (
-        <div style={{padding:'40px', textAlign:'center'}}><h3>⏳ Loading Products...</h3></div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
-            {products.length === 0 ? <p>No products found.</p> : products.map((product) => (
-            <div 
-                key={product.id} 
-                onClick={() => onSelectProduct(product.id)}
-                style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '10px', cursor: 'pointer', background: '#fff' }}
-            >
-                <div style={{width: '100%', height: '150px', backgroundColor: '#f4f4f4', borderRadius: '4px', overflow: 'hidden'}}>
-                <img 
-                    src={product.image ? product.image.src : (product.images && product.images[0] ? product.images[0].src : 'https://via.placeholder.com/150')} 
-                    alt={product.title} 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                />
-                </div>
-                <h3 style={{ fontSize: '15px', margin: '10px 0', fontWeight: '600' }}>{product.title}</h3>
-                <p style={{ color: '#555' }}>
-                {product.variants && product.variants[0] ? `PKR ${product.variants[0].price}` : 'Price not set'}
-                </p>
-            </div>
-            ))}
-        </div>
-      )}
-    </div>
+                <Text as="p" variant="bodyMd">Manage your connected social accounts:</Text>
+
+                <BlockStack gap="300">
+                    {renderPlatformRow('tiktok', 'TikTok', LogoTiktokIcon)}
+                    {renderPlatformRow('instagram', 'Instagram', LogoInstagramIcon)}
+                    {renderPlatformRow('facebook', 'Facebook', LogoFacebookIcon)}
+                </BlockStack>
+
+                <InlineStack align="center">
+                     {/* 🟢 FIX 1: Used checking state here */}
+                     <Button variant="plain" icon={RefreshIcon} onClick={() => checkConnection(true)} loading={checking}>
+                        Refresh Connections
+                     </Button>
+                </InlineStack>
+            </BlockStack>
+        </Modal.Section>
+    </Modal>
   );
 };
 
-export default ProductPage;
+export default PublishModal;

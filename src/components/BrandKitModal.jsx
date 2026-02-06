@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
-import './PublishModal.css'; // Reusing CSS for consistent look
+import {
+  Modal,
+  FormLayout,
+  TextField,
+  Select,
+  BlockStack,
+  InlineStack,
+  Text
+  // 🟢 REMOVED: 'Box' (Not used)
+} from '@shopify/polaris';
 
 const BrandKitModal = ({ onClose, shopName, backendUrl }) => {
     const [logoUrl, setLogoUrl] = useState('');
@@ -39,57 +47,98 @@ const BrandKitModal = ({ onClose, shopName, backendUrl }) => {
                     cta_text: ctaText
                 })
             });
-            alert("✅ Brand Settings Saved!");
-            onClose();
+            onClose(); 
         } catch (e) {
-            alert("❌ Save Failed");
+            console.error("Save failed", e);
         }
         setSaving(false);
     };
 
+    const fontOptions = [
+        {label: 'Roboto (Clean)', value: 'Roboto'},
+        {label: 'Playfair (Elegant)', value: 'Playfair Display'},
+        {label: 'Oswald (Bold)', value: 'Oswald'},
+    ];
+
     return (
-        <div className="modal-overlay" style={{zIndex: 3000}}>
-            <div className="exact-modal" style={{width: '500px', textAlign:'left', alignItems:'flex-start'}}>
-                <button className="close-btn-abs" onClick={onClose}><X size={18}/></button>
-                <h2 className="exact-title" style={{marginBottom:'20px'}}>🎨 Brand Kit Settings</h2>
+        <Modal
+            open={true}
+            onClose={onClose}
+            title="🎨 Brand Kit Settings"
+            primaryAction={{
+                content: saving ? 'Saving...' : 'Save Settings',
+                onAction: handleSave,
+                loading: saving,
+            }}
+            secondaryActions={[
+                {
+                    content: 'Cancel',
+                    onAction: onClose,
+                },
+            ]}
+        >
+            <Modal.Section>
+                <FormLayout>
+                    <TextField
+                        label="Logo URL"
+                        value={logoUrl}
+                        onChange={(value) => setLogoUrl(value)}
+                        placeholder="https://..."
+                        autoComplete="off"
+                        helpText="Paste the direct link to your transparent logo PNG."
+                    />
 
-                <div style={{width:'100%', display:'flex', flexDirection:'column', gap:'15px'}}>
-                    <div>
-                        <label style={{fontSize:'12px', fontWeight:'bold', display:'block', marginBottom:'5px'}}>Logo URL</label>
-                        <input type="text" value={logoUrl} onChange={e=>setLogoUrl(e.target.value)} placeholder="https://..." style={{width:'100%', padding:'10px', borderRadius:'6px', border:'1px solid #ccc'}} />
-                    </div>
+                    <BlockStack gap="200">
+                        <Text as="label" variant="bodyMd">Primary Brand Color</Text>
+                        <InlineStack gap="300" blockAlign="center">
+                            <div style={{
+                                width: '40px', 
+                                height: '40px', 
+                                borderRadius: '4px', 
+                                overflow: 'hidden', 
+                                border: '1px solid #ccc'
+                            }}>
+                                <input 
+                                    type="color" 
+                                    value={primaryColor} 
+                                    onChange={(e) => setPrimaryColor(e.target.value)} 
+                                    style={{
+                                        width: '150%', 
+                                        height: '150%', 
+                                        margin: '-25%', 
+                                        cursor: 'pointer'
+                                    }} 
+                                />
+                            </div>
+                            <div style={{flex: 1}}>
+                                <TextField
+                                    label="Brand Color"
+                                    labelHidden
+                                    value={primaryColor}
+                                    onChange={(value) => setPrimaryColor(value)}
+                                    autoComplete="off"
+                                />
+                            </div>
+                        </InlineStack>
+                    </BlockStack>
 
-                    <div>
-                        <label style={{fontSize:'12px', fontWeight:'bold', display:'block', marginBottom:'5px'}}>Primary Brand Color</label>
-                        <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
-                            <input type="color" value={primaryColor} onChange={e=>setPrimaryColor(e.target.value)} style={{height:'40px', width:'60px'}} />
-                            <span style={{fontSize:'14px', color:'#555'}}>{primaryColor}</span>
-                        </div>
-                    </div>
+                    <Select
+                        label="Font Style"
+                        options={fontOptions}
+                        onChange={(value) => setFontChoice(value)}
+                        value={fontChoice}
+                    />
 
-                    <div>
-                        <label style={{fontSize:'12px', fontWeight:'bold', display:'block', marginBottom:'5px'}}>Font Style</label>
-                        <select value={fontChoice} onChange={e=>setFontChoice(e.target.value)} style={{width:'100%', padding:'10px', borderRadius:'6px', border:'1px solid #ccc'}}>
-                            <option value="Roboto">Roboto (Clean)</option>
-                            <option value="Playfair Display">Playfair (Elegant)</option>
-                            <option value="Oswald">Oswald (Bold)</option>
-                        </select>
-                    </div>
-
-                    <div>
-                         <label style={{fontSize:'12px', fontWeight:'bold', display:'block', marginBottom:'5px'}}>Default CTA Text</label>
-                         <input type="text" value={ctaText} onChange={e=>setCtaText(e.target.value)} style={{width:'100%', padding:'10px', borderRadius:'6px', border:'1px solid #ccc'}} />
-                    </div>
-                </div>
-
-                <div className="exact-footer" style={{marginTop:'30px'}}>
-                    <span className="discard-link" onClick={onClose}>Cancel</span>
-                    <button className="footer-btn primary" onClick={handleSave} disabled={saving}>
-                        {saving ? "Saving..." : "Save Settings"}
-                    </button>
-                </div>
-            </div>
-        </div>
+                    <TextField
+                        label="Default CTA Text"
+                        value={ctaText}
+                        onChange={(value) => setCtaText(value)}
+                        autoComplete="off"
+                        placeholder="e.g. Shop Now"
+                    />
+                </FormLayout>
+            </Modal.Section>
+        </Modal>
     );
 };
 

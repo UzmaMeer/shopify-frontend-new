@@ -1,17 +1,39 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import './VideoModal.css';
+import {
+  Modal,
+  Text,
+  Button,
+  BlockStack,
+  InlineStack,
+  Box,
+  Icon,
+  Banner,
+  ProgressBar,
+  Spinner,
+  ButtonGroup
+  // 🟢 FIX 2: Removed unused 'Tooltip' from imports
+} from '@shopify/polaris';
+import {
+  MaximizeIcon,
+  MinimizeIcon,
+  PlayIcon,
+  PauseCircleIcon,
+  ShareIcon,
+  SaveIcon, 
+  CartIcon, 
+  ChatIcon
+  // 🟢 FIX 3: Removed unused 'XIcon' from imports
+} from '@shopify/polaris-icons';
+
 import PublishModal from './PublishModal'; 
 import { BACKEND_URL } from '../config'; 
-import { 
-  Maximize, Minimize, Play, Pause, Share2, 
-  Download, ShoppingBag, MessageCircle // 🟢 Added MessageCircle for WhatsApp
-} from 'lucide-react';
 
 const VideoModal = ({ 
   product, shopName, selectedImages, onClose, 
   voiceGender, duration, scriptTone, musicFile, videoTheme,
   customScript, userVoiceFile 
 }) => {
+  // --- STATE ---
   const [videoUrl, setVideoUrl] = useState(null);
   const [status, setStatus] = useState("idle"); 
   const [progress, setProgress] = useState(0);   
@@ -31,9 +53,9 @@ const VideoModal = ({
 
   const hasCalledRef = useRef(false);
   const videoRef = useRef(null); 
-  const containerRef = useRef(null);
+  
+  // --- 1. ACTIONS ---
 
-  // --- 1. WHATSAPP SHARE LOGIC ---
   const handleWhatsAppShare = () => {
     if (!videoUrl) return;
     const shareText = `Check out this product video for ${product.title}: ${videoUrl}`;
@@ -41,7 +63,6 @@ const VideoModal = ({
     window.open(whatsappUrl, '_blank');
   };
 
-  // --- 2. DOWNLOAD LOGIC ---
   const handleDownload = async () => {
     if (!videoUrl) return;
     setIsDownloading(true);
@@ -65,7 +86,6 @@ const VideoModal = ({
     }
   };
 
-  // --- 3. ADD TO STOREFRONT LOGIC ---
   const handleAddToStore = async () => {
     if (!videoUrl) return;
     setIsUploadingToStore(true);
@@ -94,7 +114,7 @@ const VideoModal = ({
     }
   };
 
-  // --- 4. PLAYER CONTROLS ---
+  // --- 2. PLAYER CONTROLS ---
   const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
   const togglePlay = () => {
     if (videoRef.current) {
@@ -120,7 +140,7 @@ const VideoModal = ({
     }
   };
 
-  // --- 5. GENERATION & POLLING LOGIC ---
+  // --- 3. GENERATION & POLLING LOGIC ---
   const pollStatus = useCallback((jobId) => {
     const interval = setInterval(async () => {
       try {
@@ -197,96 +217,137 @@ const VideoModal = ({
     startVideoGeneration();
   }, [startVideoGeneration]);
 
+  // --- RENDER ---
   return (
-    <div className="modal-overlay">
-      <div ref={containerRef} className={`modal-content ${isFullscreen ? 'fullscreen-mode' : ''}`}>
-        
-        {!isFullscreen && (
-            <div className="modal-header">
-            <div className="modal-title">Creating Video ({videoTheme})</div>
-            <button className="close-btn" onClick={onClose}>&times;</button>
-            </div>
-        )}
-
-        <div className="video-preview-area">
-          {(status === "queued" || status === "processing") && (
-            <div className="loading-state">
-              <div className="spinner"></div>
-              <p className="status-text">{status === "queued" ? "Analyzing..." : `Rendering: ${progress}%`}</p>
-              <div className="progress-container">
-                <div className="progress-bar-bg">
-                  <div className="progress-bar-fill" style={{ width: `${progress}%` }}></div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {status === "failed" && <div className="error-state">⚠️<p>{errorMsg}</p></div>}
-
-          {status === "done" && videoUrl && (
-            <div className="video-container" onClick={togglePlay}>
-               <video 
-                  ref={videoRef} autoPlay playsInline src={videoUrl} className="final-video"
-                  onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata}
-                  onEnded={() => setIsPlaying(false)}
-               />
-               <div className="custom-controls" onClick={(e) => e.stopPropagation()}>
-                  <button className="ctrl-btn" onClick={togglePlay}>
-                    {isPlaying ? <Pause size={20} fill="white" /> : <Play size={20} fill="white" />}
-                  </button>
-                  <input type="range" min="0" max={videoDuration} value={currentTime} onChange={handleSeek} className="video-scrubber" />
-                  <div className="right-ctrls">
-                    <span className="time-text">{Math.floor(currentTime)}s / {Math.floor(videoDuration)}s</span>
-                    <button className="ctrl-btn" onClick={toggleFullscreen}>
-                        {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-                    </button>
-                  </div>
-               </div>
-            </div>
-          )}
-        </div>
-
-        {!isFullscreen && (
-            <div className="modal-footer">
-            {status === "done" ? (
-                <div className="action-row">
-                    <button className="btn-action secondary" onClick={onClose}>Discard</button>
-                    <div className="right-actions">
-                        <button className="btn-action" onClick={handleDownload} disabled={isDownloading}>
-                            <Download size={16}/> {isDownloading ? "Saving..." : "Download"}
-                        </button>
-                        
-                        <button className="btn-action" onClick={handleAddToStore} disabled={isUploadingToStore} style={{background: '#f4f4f4', border: '1px solid #ccc', color: '#333'}}>
-                           <ShoppingBag size={16}/> {isUploadingToStore ? "Uploading..." : "Add to Store"}
-                        </button>
-
-                        {/* 🟢 WHATSAPP SHARE BUTTON */}
-                        <button 
-                          className="btn-action" 
-                          onClick={handleWhatsAppShare}
-                          style={{background: '#25D366', color: 'white', border: 'none'}}
-                        >
-                          <MessageCircle size={16} /> WhatsApp
-                        </button>
-
-                        <button className="btn-action btn-primary" onClick={() => setShowSocialModal(true)}>
-                            <Share2 size={16} /> Publish
-                        </button>
-                    </div>
-                </div>
-            ) : (
-                <div className="action-row footer-right">
-                    <button className="btn-action secondary" onClick={onClose}>Cancel</button>
-                </div>
-            )}
-            </div>
-        )}
-      </div>
-
+    <>
       {showSocialModal && (
-        <PublishModal videoFilename={videoUrl?.split('/').pop()} renderJobId={currentJobId} onClose={() => setShowSocialModal(false)} />
+        <PublishModal 
+            renderJobId={currentJobId} 
+            isProcessing={status !== 'done'}
+            productId={product.id} 
+            onClose={() => setShowSocialModal(false)} 
+        />
       )}
-    </div>
+
+      <div style={{display: showSocialModal ? 'none' : 'block'}}>
+        <Modal
+            open={true}
+            onClose={onClose}
+            title={`Creating Video (${videoTheme})`}
+            size="large"
+            primaryAction={status === "done" ? {
+                content: 'Publish Video',
+                onAction: () => setShowSocialModal(true),
+                icon: ShareIcon,
+            } : undefined}
+            secondaryActions={[
+                {
+                    content: status === "done" ? 'Discard' : 'Cancel',
+                    onAction: onClose,
+                },
+            ]}
+        >
+            <Modal.Section>
+            <BlockStack gap="500">
+                
+                {/* 1. LOADING STATE */}
+                {(status === "queued" || status === "processing") && (
+                    <Box padding="800">
+                        <BlockStack gap="400" align="center" inlineAlign="center">
+                            <Spinner size="large" accessibilityLabel="Generating video" />
+                            <Text variant="headingMd" as="h3">
+                                {status === "queued" ? "Analyzing Product Data..." : `Rendering Video: ${progress}%`}
+                            </Text>
+                            <div style={{width: '100%', maxWidth: '400px'}}>
+                                <ProgressBar progress={progress} size="small" tone="primary" />
+                            </div>
+                        </BlockStack>
+                    </Box>
+                )}
+
+                {/* 2. ERROR STATE */}
+                {status === "failed" && (
+                    <Banner tone="critical" title="Generation Failed">
+                        <p>{errorMsg || "Something went wrong. Please try again."}</p>
+                    </Banner>
+                )}
+
+                {/* 3. SUCCESS / PLAYER STATE */}
+                {status === "done" && videoUrl && (
+                    <BlockStack gap="400">
+                        {/* VIDEO PLAYER CONTAINER */}
+                        <div 
+                            style={{
+                                position: 'relative', 
+                                width: '100%', 
+                                aspectRatio: '16/9', 
+                                background: 'black', 
+                                borderRadius: '8px',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            <video 
+                                ref={videoRef} 
+                                src={videoUrl}
+                                autoPlay 
+                                playsInline
+                                style={{width: '100%', height: '100%', objectFit: 'contain'}}
+                                onTimeUpdate={handleTimeUpdate} 
+                                onLoadedMetadata={handleLoadedMetadata}
+                                onEnded={() => setIsPlaying(false)}
+                                onClick={togglePlay}
+                            />
+                            
+                            {/* CUSTOM CONTROLS OVERLAY */}
+                            <div style={{
+                                position: 'absolute', 
+                                bottom: 0, left: 0, right: 0, 
+                                padding: '10px 20px', 
+                                background: 'rgba(0,0,0,0.6)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '15px',
+                                color: 'white'
+                            }}>
+                                <div onClick={togglePlay} style={{cursor:'pointer'}}>
+                                    <Icon source={isPlaying ? PauseCircleIcon : PlayIcon} tone="base" />
+                                </div>
+                                
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max={videoDuration} 
+                                    value={currentTime} 
+                                    onChange={handleSeek} 
+                                    style={{flex: 1, cursor: 'pointer'}} 
+                                />
+                                
+                                <Text variant="bodySm" as="span" tone="textInverse">
+                                    {Math.floor(currentTime)}s / {Math.floor(videoDuration)}s
+                                </Text>
+
+                                <div onClick={toggleFullscreen} style={{cursor:'pointer'}}>
+                                    <Icon source={isFullscreen ? MinimizeIcon : MaximizeIcon} tone="base" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ACTION BUTTONS ROW */}
+                        <InlineStack align="center" gap="300">
+                            <ButtonGroup>
+                                <Button icon={SaveIcon} onClick={handleDownload} loading={isDownloading}>Download</Button>
+                                <Button icon={CartIcon} onClick={handleAddToStore} loading={isUploadingToStore}>Add to Gallery</Button>
+                                <Button icon={ChatIcon} onClick={handleWhatsAppShare} tone="success">WhatsApp</Button>
+                            </ButtonGroup>
+                        </InlineStack>
+
+                    </BlockStack>
+                )}
+            </BlockStack>
+            </Modal.Section>
+        </Modal>
+      </div>
+    </>
   );
 };
 

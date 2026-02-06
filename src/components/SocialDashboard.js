@@ -1,5 +1,29 @@
 import React, { useState } from 'react';
-import { Video, MoreHorizontal } from 'lucide-react';
+import {
+  Page,
+  Layout,
+  Card,
+  Button,
+  Text,
+  TextField,
+  Select,
+  BlockStack,
+  InlineStack,
+  Banner,
+  Box,
+  Badge,
+  Icon,
+  Divider
+} from '@shopify/polaris';
+import {
+  LogoFacebookIcon,
+  LogoInstagramIcon,
+  CheckCircleIcon,
+  AlertCircleIcon,
+  SendIcon,
+  CalendarIcon
+} from '@shopify/polaris-icons';
+
 const SocialDashboard = () => {
   // 1. State for managing Connected Accounts
   const [accounts, setAccounts] = useState({
@@ -9,160 +33,170 @@ const SocialDashboard = () => {
 
   // 2. State for handling the new post form
   const [postContent, setPostContent] = useState("");
-  const [selectedPlatform, setSelectedPlatform] = useState("all"); // 'all', 'facebook', or 'instagram'
-  
-  // 3. State for storing Published Posts (taake nazar aayein)
+  const [selectedPlatform, setSelectedPlatform] = useState("all");
+
+  // 3. State for storing Published Posts
   const [publishedPosts, setPublishedPosts] = useState([
     { id: 1, platform: 'instagram', content: 'Sale is live now! #Shopify', date: '2025-12-30 10:00 AM', status: 'Published' }
   ]);
 
   // Mock function to simulate connecting an account
   const toggleConnection = (platform) => {
-    // Real scenario mein yahan API call hogi (OAuth)
     setAccounts(prev => ({ ...prev, [platform]: !prev[platform] }));
   };
 
   // Function to handle "Post Now"
-  const handlePost = (e) => {
-    e.preventDefault();
-    if (!postContent) return alert("Please write something to post!");
+  const handlePost = () => {
+    if (!postContent) return; // Polaris handles validation UI usually, but simple return here
     
-    if (selectedPlatform === 'all' && (!accounts.facebook || !accounts.instagram)) {
-       // Just a check
-    }
-
-    // Nayi post create kar rahe hain
     const newPost = {
       id: Date.now(),
       platform: selectedPlatform === 'all' ? 'Facebook & Instagram' : selectedPlatform,
       content: postContent,
       date: new Date().toLocaleString(),
-      status: 'Published' // Yeh show karega ke post ho gayi
+      status: 'Published'
     };
 
-    // List mein add karein
     setPublishedPosts([newPost, ...publishedPosts]);
-    setPostContent(""); // Input clear karein
-    alert("Post published successfully!");
+    setPostContent(""); 
   };
 
+  // Options for Select
+  const platformOptions = [
+      {label: 'All Connected Platforms', value: 'all'},
+      ...(accounts.facebook ? [{label: 'Facebook Page', value: 'Facebook'}] : []),
+      ...(accounts.instagram ? [{label: 'Instagram Business', value: 'Instagram'}] : []),
+  ];
+
   return (
-    <div className="p-6 max-w-4xl mx-auto bg-gray-50 min-h-screen">
-      
-      <h1 className="text-3xl font-bold mb-8 text-gray-800">Social Media Manager</h1>
-
-      {/* SECTION 1: CONNECT ACCOUNTS */}
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 className="text-xl font-semibold mb-4">1. Connect Your Accounts</h2>
-        <div className="flex gap-4">
-          
-          {/* Facebook Button */}
-          <button 
-            onClick={() => toggleConnection('facebook')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border transition-all ${
-              accounts.facebook 
-              ? 'bg-blue-600 text-white border-blue-600' 
-              : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <Facebook size={20} />
-            {accounts.facebook ? 'Facebook Connected' : 'Connect Facebook'}
-            {accounts.facebook && <CheckCircle size={16} />}
-          </button>
-
-          {/* Instagram Button */}
-          <button 
-            onClick={() => toggleConnection('instagram')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border transition-all ${
-              accounts.instagram 
-              ? 'bg-pink-600 text-white border-pink-600' 
-              : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <Instagram size={20} />
-            {accounts.instagram ? 'Instagram Connected' : 'Connect Instagram'}
-            {accounts.instagram && <CheckCircle size={16} />}
-          </button>
-        </div>
-      </div>
-
-      {/* SECTION 2: CREATE POST */}
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 className="text-xl font-semibold mb-4">2. Create New Post</h2>
+    <Page title="Social Media Manager" fullWidth>
+      <Layout>
         
-        {(!accounts.facebook && !accounts.instagram) ? (
-          <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-4 rounded">
-            <AlertCircle size={20}/> Pehle upar se koi account connect karein.
-          </div>
-        ) : (
-          <form onSubmit={handlePost}>
-            
-            {/* Platform Selector */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Post to:</label>
-              <select 
-                value={selectedPlatform}
-                onChange={(e) => setSelectedPlatform(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md"
-              >
-                <option value="all">All Connected Platforms</option>
-                {accounts.facebook && <option value="Facebook">Facebook Page</option>}
-                {accounts.instagram && <option value="Instagram">Instagram Business</option>}
-              </select>
-            </div>
+        {/* SECTION 1: CONNECT ACCOUNTS */}
+        <Layout.Section>
+          <Card>
+            <BlockStack gap="400">
+              <Text variant="headingMd" as="h2">1. Connect Your Accounts</Text>
+              <InlineStack gap="300">
+                <Button 
+                  icon={LogoFacebookIcon} 
+                  onClick={() => toggleConnection('facebook')}
+                  variant={accounts.facebook ? 'primary' : 'secondary'}
+                  tone={accounts.facebook ? 'success' : undefined}
+                >
+                  {accounts.facebook ? 'Facebook Connected' : 'Connect Facebook'}
+                </Button>
+                
+                <Button 
+                  icon={LogoInstagramIcon} 
+                  onClick={() => toggleConnection('instagram')}
+                  variant={accounts.instagram ? 'primary' : 'secondary'}
+                  tone={accounts.instagram ? 'critical' : undefined} // Instagram brand color is tricky in Polaris, usually critical/pinkish
+                >
+                  {accounts.instagram ? 'Instagram Connected' : 'Connect Instagram'}
+                </Button>
+              </InlineStack>
+              
+              {/* Visual checkmark feedback */}
+              {(accounts.facebook || accounts.instagram) && (
+                  <InlineStack gap="200" align="start">
+                      {accounts.facebook && <Badge tone="success">Facebook Active</Badge>}
+                      {accounts.instagram && <Badge tone="critical">Instagram Active</Badge>}
+                  </InlineStack>
+              )}
+            </BlockStack>
+          </Card>
+        </Layout.Section>
 
-            {/* Text Area */}
-            <div className="mb-4">
-              <textarea 
-                className="w-full p-3 border border-gray-300 rounded-md h-32 focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Write your caption here..."
-                value={postContent}
-                onChange={(e) => setPostContent(e.target.value)}
-              ></textarea>
-            </div>
+        {/* SECTION 2: CREATE POST */}
+        <Layout.Section>
+          <Card>
+            <BlockStack gap="400">
+              <Text variant="headingMd" as="h2">2. Create New Post</Text>
+              
+              {(!accounts.facebook && !accounts.instagram) ? (
+                <Banner tone="warning" icon={AlertCircleIcon}>
+                  <p>Please connect at least one social account above to start posting.</p>
+                </Banner>
+              ) : (
+                <BlockStack gap="400">
+                  <Select
+                    label="Post to"
+                    options={platformOptions}
+                    onChange={(val) => setSelectedPlatform(val)}
+                    value={selectedPlatform}
+                  />
 
-            {/* Submit Button */}
-            <button 
-              type="submit"
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 font-medium"
-            >
-              <Send size={18} /> Publish Now
-            </button>
-          </form>
-        )}
-      </div>
+                  <TextField
+                    label="Caption"
+                    value={postContent}
+                    onChange={(val) => setPostContent(val)}
+                    multiline={4}
+                    placeholder="Write your caption here..."
+                    autoComplete="off"
+                  />
 
-      {/* SECTION 3: RECENT POSTS (FEED) */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4">3. Recent Activity (Live Feed)</h2>
-        
-        {publishedPosts.length === 0 ? (
-          <p className="text-gray-500">No posts yet.</p>
-        ) : (
-          <div className="space-y-4">
-            {publishedPosts.map((post) => (
-              <div key={post.id} className="border border-gray-200 p-4 rounded-lg flex justify-between items-start hover:bg-gray-50 transition">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-gray-800 capitalize">
-                      {post.platform.includes('Facebook') && <Facebook size={16} className="inline mr-1 text-blue-600"/>}
-                      {post.platform.includes('Instagram') && <Instagram size={16} className="inline mr-1 text-pink-600"/>}
-                      {post.platform}
-                    </span>
-                    <span className="text-xs text-gray-500">• {post.date}</span>
-                  </div>
-                  <p className="text-gray-700">{post.content}</p>
-                </div>
-                <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
-                  {post.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  <InlineStack align="end">
+                    <Button 
+                        variant="primary" 
+                        icon={SendIcon} 
+                        onClick={handlePost}
+                        disabled={!postContent}
+                    >
+                        Publish Now
+                    </Button>
+                  </InlineStack>
+                </BlockStack>
+              )}
+            </BlockStack>
+          </Card>
+        </Layout.Section>
 
-    </div>
+        {/* SECTION 3: RECENT ACTIVITY */}
+        <Layout.Section>
+          <Card>
+            <BlockStack gap="400">
+              <Text variant="headingMd" as="h2">3. Recent Activity (Live Feed)</Text>
+              
+              {publishedPosts.length === 0 ? (
+                <Box padding="400" background="bg-surface-secondary" borderRadius="200">
+                    <Text tone="subdued" alignment="center">No posts yet.</Text>
+                </Box>
+              ) : (
+                <BlockStack gap="0">
+                  {publishedPosts.map((post, index) => (
+                    <Box key={post.id}>
+                        {index > 0 && <Divider />}
+                        <Box padding="400">
+                            <BlockStack gap="200">
+                                <InlineStack align="space-between">
+                                    <InlineStack gap="200">
+                                        {/* Icon based on platform */}
+                                        {post.platform.toLowerCase().includes('facebook') && <Icon source={LogoFacebookIcon} tone="base"/>}
+                                        {post.platform.toLowerCase().includes('instagram') && <Icon source={LogoInstagramIcon} tone="base"/>}
+                                        <Text variant="bodyMd" fontWeight="bold">{post.platform}</Text>
+                                    </InlineStack>
+                                    <Badge tone="success" progress="complete">{post.status}</Badge>
+                                </InlineStack>
+                                
+                                <Text variant="bodyMd" as="p">{post.content}</Text>
+                                
+                                <InlineStack gap="100" align="start">
+                                    <Icon source={CalendarIcon} tone="subdued" />
+                                    <Text variant="bodySm" tone="subdued">{post.date}</Text>
+                                </InlineStack>
+                            </BlockStack>
+                        </Box>
+                    </Box>
+                  ))}
+                </BlockStack>
+              )}
+            </BlockStack>
+          </Card>
+        </Layout.Section>
+
+      </Layout>
+    </Page>
   );
 };
 
