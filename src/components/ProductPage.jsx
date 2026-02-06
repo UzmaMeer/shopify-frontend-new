@@ -1,227 +1,152 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Modal,
+  Page,
+  Layout,
+  Card,
+  IndexTable,
+  Thumbnail,
   Text,
-  Button,
-  BlockStack,
-  InlineStack,
-  Box,
-  Icon,
-  Banner,
-  Checkbox
+  TextField,
+  EmptyState,
+  SkeletonBodyText,
+  useIndexResourceState,
 } from '@shopify/polaris';
-import {
-  LogoTiktokIcon,
-  LogoInstagramIcon,
-  LogoFacebookIcon,
-  DeleteIcon,
-  RefreshIcon
-} from '@shopify/polaris-icons';
+import { SearchIcon, ImageIcon } from '@shopify/polaris-icons';
 import { BACKEND_URL } from '../config';
 
-const PublishModal = ({ onClose, renderJobId, isProcessing, productId }) => {
-  const [accounts, setAccounts] = useState([]);
-  const [posting, setPosting] = useState(false);
-  
-  // 🟢 FIX 1: We are now using 'checking' to show a spinner on the Refresh button
-  const [checking, setChecking] = useState(false);
-  
-  const [selected, setSelected] = useState({ instagram: true, facebook: true, tiktok: true });
+const ProductPage = ({ onSelectProduct, shopName }) => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // --- 1. Fetch Connected Accounts ---
-  const checkConnection = (isManual = false) => {
-    if(isManual) setChecking(true);
-    
-    fetch(`${BACKEND_URL}/api/social-accounts`, {
+  const fetchProducts = useCallback(async (query = "") => {
+    setLoading(true);
+    if (!shopName) return;
+
+    try {
+      let url = `${BACKEND_URL}/api/products?shop=${shopName}`;
+      if (query) url += `&search=${encodeURIComponent(query)}`;
+
+      const response = await fetch(url, {
         method: "GET",
         headers: {
-            "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true" 
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true"
         }
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          setAccounts(data.accounts || []);
-          if (isManual) alert("✅ Account Status Updated!");
-        }
-        setChecking(false);
-      })
-      .catch(err => { 
-        console.error("Fetch Error:", err); 
-        setChecking(false); 
       });
-  };
+
+      if (response.status === 401) {
+        window.top.location.href = `${BACKEND_URL}/api/auth?shop=${shopName}&force_auth=true`;
+        return;
+      }
+
+      const data = await response.json();
+      setProducts(data.products || []);
+    } catch (err) {
+      console.error("Fetch failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [shopName]);
 
   useEffect(() => {
-    checkConnection(false);
-    const handleMessage = (event) => {
-      if (event.data === 'login-success') {
-        checkConnection(false); 
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+    const delayDebounceFn = setTimeout(() => {
+      fetchProducts(searchTerm);
+    }, 500);
 
-  // --- 2. Handlers ---
-  const handleConnect = (platform) => {
-    const url = `${BACKEND_URL}/login/${platform}`;
-    const w = 500, h = 600;
-    const y = window.top.outerHeight / 2 + window.top.screenY - (h / 2);
-    const x = window.top.outerWidth / 2 + window.top.screenX - (w / 2);
-    window.open(url, 'ConnectSocial', `width=${w},height=${h},top=${y},left=${x}`);
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, fetchProducts]);
+
+  // --- POLARIS TABLE CONFIG ---
+  const resourceName = {
+    singular: 'product',
+    plural: 'products',
   };
 
-  const handleDisconnect = async (platform) => {
-    if (!window.confirm(`Are you sure you want to disconnect ${platform}?`)) return;
-    
-    try {
-        await fetch(`${BACKEND_URL}/api/disconnect/${platform}`, { 
-            method: 'DELETE',
-            headers: { "ngrok-skip-browser-warning": "true" }
-        });
-        setAccounts(prev => prev.filter(acc => acc.platform !== platform));
-    } catch (err) { alert("Backend communication error."); }
-  };
+  const { selectedResources, allResourcesSelected, handleSelectionChange } =
+    useIndexResourceState(products);
 
-  const toggleSelection = (platform) => {
-    setSelected(prev => ({ ...prev, [platform]: !prev[platform] }));
-  };
-
-  const handlePublish = async () => {
-    const connectedPlatforms = accounts.map(a => a.platform);
-    const targets = Object.keys(selected).filter(p => selected[p] === true && connectedPlatforms.includes(p));
-    
-    if (targets.length === 0) return alert("⚠️ Please select at least one connected account.");
-
-    setPosting(true);
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/queue-publish`, {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'true'
-        },
-        body: JSON.stringify({ 
-            render_job_id: renderJobId, 
-            accounts: targets,
-            product_id: productId 
-        })
-      });
-      const result = await response.json();
-      
-      if(result.status === 'queued') {
-          alert("✅ Publishing Queued!");
-          onClose();
-      } else if (result.status === 'completed') {
-          alert("✅ Published Successfully!");
-          onClose();
-      } else {
-          alert("⚠️ Error: " + JSON.stringify(result));
-      }
-    } catch (error) { 
-        alert("❌ Backend Error: Is your Python server running?"); 
-    }
-    setPosting(false);
-  };
-
-  const isConnected = (platform) => accounts.some(acc => acc.platform === platform);
-
-  // --- Render Row Helper ---
-  const renderPlatformRow = (platform, label, IconSource) => {
-      const connected = isConnected(platform);
-      const isSelected = selected[platform];
-
-      return (
-          <Box
-            padding="400"
-            borderWidth="025"
-            borderColor="border"
-            borderRadius="200"
-            background={connected && isSelected ? 'bg-surface-secondary' : 'bg-surface'}
-          >
-            <InlineStack align="space-between" blockAlign="center">
-                <InlineStack gap="300" blockAlign="center">
-                     <div style={{width: 30, height: 30, display:'flex', alignItems:'center'}}>
-                        <Icon source={IconSource} tone="base"/>
-                     </div>
-                     <Text variant="bodyMd" fontWeight="bold">{label}</Text>
-                </InlineStack>
-
-                {connected ? (
-                    <InlineStack gap="400" blockAlign="center">
-                         <Checkbox
-                            label="Post"
-                            labelHidden
-                            checked={isSelected}
-                            onChange={() => toggleSelection(platform)}
-                        />
-                        <div style={{borderLeft: '1px solid #dfe3e8', height: '24px', paddingLeft: '10px'}}>
-                            <Button
-                                icon={DeleteIcon}
-                                tone="critical"
-                                variant="plain"
-                                onClick={() => handleDisconnect(platform)}
-                                accessibilityLabel="Disconnect"
-                            />
-                        </div>
-                    </InlineStack>
-                ) : (
-                    <Button onClick={() => handleConnect(platform)} size="slim">Connect</Button>
-                )}
-            </InlineStack>
-          </Box>
-      );
-  };
+  const rowMarkup = products.map(
+    ({ id, title, image, images, variants }, index) => (
+      <IndexTable.Row
+        id={id}
+        key={id}
+        selected={selectedResources.includes(id)}
+        position={index}
+        onClick={() => onSelectProduct(id)}
+      >
+        <IndexTable.Cell>
+          <Thumbnail
+            source={image ? image.src : (images && images[0] ? images[0].src : ImageIcon)}
+            alt={title}
+            size="small"
+          />
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+          <Text variant="bodyMd" fontWeight="bold" as="span">{title}</Text>
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+           {variants && variants[0] ? `PKR ${variants[0].price}` : '—'}
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+           <Text tone="success">Active</Text>
+        </IndexTable.Cell>
+      </IndexTable.Row>
+    ),
+  );
 
   return (
-    <Modal
-        open={true}
-        onClose={onClose}
-        title={isProcessing ? "Queue Auto-Publish" : "Publish Video"}
-        primaryAction={{
-            content: posting ? 'Processing...' : (isProcessing ? 'Queue Publish' : 'Publish Now'),
-            onAction: handlePublish,
-            loading: posting,
-        }}
-        secondaryActions={[
-            {
-                content: 'Cancel',
-                onAction: onClose,
-            },
-        ]}
-    >
-        <Modal.Section>
-            <BlockStack gap="400">
-                {isProcessing ? (
-                    <Banner tone="info">
-                        <p>Your video is still rendering. Select accounts below, and we will automatically publish it once it finishes.</p>
-                    </Banner>
-                ) : (
-                    <Banner tone="success">
-                        <p>Video is ready! Select platforms to publish immediately.</p>
-                    </Banner>
-                )}
+    <Page title="Your Products" fullWidth>
+      <Layout>
+        <Layout.Section>
+          <Card>
+            <div style={{ padding: '16px' }}>
+              <TextField
+                label="Search Products"
+                value={searchTerm}
+                onChange={(value) => setSearchTerm(value)}
+                placeholder="Search by title..."
+                autoComplete="off"
+                prefix={<SearchIcon />}
+                labelHidden
+                clearButton
+                onClearButtonClick={() => setSearchTerm("")}
+              />
+            </div>
 
-                <Text as="p" variant="bodyMd">Manage your connected social accounts:</Text>
-
-                <BlockStack gap="300">
-                    {renderPlatformRow('tiktok', 'TikTok', LogoTiktokIcon)}
-                    {renderPlatformRow('instagram', 'Instagram', LogoInstagramIcon)}
-                    {renderPlatformRow('facebook', 'Facebook', LogoFacebookIcon)}
-                </BlockStack>
-
-                <InlineStack align="center">
-                     {/* 🟢 FIX 1: Used checking state here */}
-                     <Button variant="plain" icon={RefreshIcon} onClick={() => checkConnection(true)} loading={checking}>
-                        Refresh Connections
-                     </Button>
-                </InlineStack>
-            </BlockStack>
-        </Modal.Section>
-    </Modal>
+            {loading ? (
+               <div style={{padding: '20px'}}>
+                   <SkeletonBodyText lines={5} />
+               </div>
+            ) : products.length === 0 ? (
+                <EmptyState
+                    heading="No products found"
+                    image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                >
+                    <p>Try changing your search term.</p>
+                </EmptyState>
+            ) : (
+                <IndexTable
+                  resourceName={resourceName}
+                  itemCount={products.length}
+                  selectedItemsCount={allResourcesSelected ? 'All' : selectedResources.length}
+                  onSelectionChange={handleSelectionChange}
+                  headings={[
+                    { title: 'Image' },
+                    { title: 'Product Title' },
+                    { title: 'Price' },
+                    { title: 'Status' },
+                  ]}
+                  selectable={false}
+                >
+                  {rowMarkup}
+                </IndexTable>
+            )}
+          </Card>
+        </Layout.Section>
+      </Layout>
+    </Page>
   );
 };
 
-export default PublishModal;
+export default ProductPage;
