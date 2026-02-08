@@ -36,6 +36,7 @@ const ProductPage = ({ onSelectProduct, shopName }) => {
       });
 
       if (response.status === 401) {
+        // If unauthorized, redirect to auth (Fixes the issue)
         window.top.location.href = `${BACKEND_URL}/api/auth?shop=${shopName}&force_auth=true`;
         return;
       }

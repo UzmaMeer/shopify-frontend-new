@@ -11,7 +11,6 @@ import {
   ProgressBar,
   Spinner,
   ButtonGroup
-  // 🟢 FIX 2: Removed unused 'Tooltip' from imports
 } from '@shopify/polaris';
 import {
   MaximizeIcon,
@@ -22,7 +21,6 @@ import {
   SaveIcon, 
   CartIcon, 
   ChatIcon
-  // 🟢 FIX 3: Removed unused 'XIcon' from imports
 } from '@shopify/polaris-icons';
 
 import PublishModal from './PublishModal'; 
@@ -53,6 +51,18 @@ const VideoModal = ({
 
   const hasCalledRef = useRef(false);
   const videoRef = useRef(null); 
+
+  // 🟢 DEBUG: Check IDs immediately when Modal opens
+  useEffect(() => {
+    if (product) {
+        console.log("🟢 DEBUG PRODUCT DATA:", product);
+        if (product.variants && product.variants.length > 0) {
+            console.log("✅ First Variant ID found:", product.variants[0].id);
+        } else {
+            console.warn("⚠️ No variants found in product object!");
+        }
+    }
+  }, [product]);
   
   // --- 1. ACTIONS ---
 
@@ -217,18 +227,32 @@ const VideoModal = ({
     startVideoGeneration();
   }, [startVideoGeneration]);
 
+  // --- 4. PREPARE VARIANT ID FOR PUBLISH ---
+  const getVariantId = () => {
+      // 🟢 DEBUG ALERT: This forces you to see what ID is being picked
+      if (product.variants && product.variants.length > 0) {
+          const vId = product.variants[0].id;
+          // alert(`DEBUG: Variant ID Found! Sending: ${vId}`);
+          return vId;
+      }
+      // alert(`DEBUG: No Variants found. Sending Parent ID: ${product.id}`);
+      return product.id;
+  };
+
   // --- RENDER ---
   return (
     <>
+      {/* If Publishing, show Publish Modal on top */}
       {showSocialModal && (
         <PublishModal 
             renderJobId={currentJobId} 
             isProcessing={status !== 'done'}
-            productId={product.id} 
+            productId={getVariantId()}
             onClose={() => setShowSocialModal(false)} 
         />
       )}
 
+      {/* Main Video Creation Modal */}
       <div style={{display: showSocialModal ? 'none' : 'block'}}>
         <Modal
             open={true}
@@ -249,7 +273,6 @@ const VideoModal = ({
         >
             <Modal.Section>
             <BlockStack gap="500">
-                
                 {/* 1. LOADING STATE */}
                 {(status === "queued" || status === "processing") && (
                     <Box padding="800">
@@ -275,64 +298,21 @@ const VideoModal = ({
                 {/* 3. SUCCESS / PLAYER STATE */}
                 {status === "done" && videoUrl && (
                     <BlockStack gap="400">
-                        {/* VIDEO PLAYER CONTAINER */}
-                        <div 
-                            style={{
-                                position: 'relative', 
-                                width: '100%', 
-                                aspectRatio: '16/9', 
-                                background: 'black', 
-                                borderRadius: '8px',
-                                overflow: 'hidden'
-                            }}
-                        >
+                        <div style={{position: 'relative', width: '100%', aspectRatio: '16/9', background: 'black', borderRadius: '8px', overflow: 'hidden'}}>
                             <video 
-                                ref={videoRef} 
-                                src={videoUrl}
-                                autoPlay 
-                                playsInline
+                                ref={videoRef} src={videoUrl} autoPlay playsInline
                                 style={{width: '100%', height: '100%', objectFit: 'contain'}}
-                                onTimeUpdate={handleTimeUpdate} 
-                                onLoadedMetadata={handleLoadedMetadata}
-                                onEnded={() => setIsPlaying(false)}
-                                onClick={togglePlay}
+                                onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata}
+                                onEnded={() => setIsPlaying(false)} onClick={togglePlay}
                             />
-                            
-                            {/* CUSTOM CONTROLS OVERLAY */}
-                            <div style={{
-                                position: 'absolute', 
-                                bottom: 0, left: 0, right: 0, 
-                                padding: '10px 20px', 
-                                background: 'rgba(0,0,0,0.6)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '15px',
-                                color: 'white'
-                            }}>
-                                <div onClick={togglePlay} style={{cursor:'pointer'}}>
-                                    <Icon source={isPlaying ? PauseCircleIcon : PlayIcon} tone="base" />
-                                </div>
-                                
-                                <input 
-                                    type="range" 
-                                    min="0" 
-                                    max={videoDuration} 
-                                    value={currentTime} 
-                                    onChange={handleSeek} 
-                                    style={{flex: 1, cursor: 'pointer'}} 
-                                />
-                                
-                                <Text variant="bodySm" as="span" tone="textInverse">
-                                    {Math.floor(currentTime)}s / {Math.floor(videoDuration)}s
-                                </Text>
-
-                                <div onClick={toggleFullscreen} style={{cursor:'pointer'}}>
-                                    <Icon source={isFullscreen ? MinimizeIcon : MaximizeIcon} tone="base" />
-                                </div>
+                            <div style={{position: 'absolute', bottom: 0, left: 0, right: 0, padding: '10px 20px', background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', gap: '15px', color: 'white'}}>
+                                <div onClick={togglePlay} style={{cursor:'pointer'}}><Icon source={isPlaying ? PauseCircleIcon : PlayIcon} tone="base" /></div>
+                                <input type="range" min="0" max={videoDuration} value={currentTime} onChange={handleSeek} style={{flex: 1, cursor: 'pointer'}} />
+                                <Text variant="bodySm" as="span" tone="textInverse">{Math.floor(currentTime)}s / {Math.floor(videoDuration)}s</Text>
+                                <div onClick={toggleFullscreen} style={{cursor:'pointer'}}><Icon source={isFullscreen ? MinimizeIcon : MaximizeIcon} tone="base" /></div>
                             </div>
                         </div>
 
-                        {/* ACTION BUTTONS ROW */}
                         <InlineStack align="center" gap="300">
                             <ButtonGroup>
                                 <Button icon={SaveIcon} onClick={handleDownload} loading={isDownloading}>Download</Button>
@@ -340,7 +320,6 @@ const VideoModal = ({
                                 <Button icon={ChatIcon} onClick={handleWhatsAppShare} tone="success">WhatsApp</Button>
                             </ButtonGroup>
                         </InlineStack>
-
                     </BlockStack>
                 )}
             </BlockStack>

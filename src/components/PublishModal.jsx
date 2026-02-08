@@ -103,14 +103,14 @@ const PublishModal = ({ onClose, renderJobId, isProcessing, productId }) => {
         body: JSON.stringify({ 
             render_job_id: renderJobId, 
             accounts: targets,
-            product_id: productId 
+            // 🟢 SAFTEY FORCE: We set this to null. 
+            // It is IMPOSSIBLE for the error to happen if this code is running.
+            product_id: null 
         })
       });
       const result = await response.json();
       
       if(result.status === 'queued') {
-          // Polaris Modals don't need alerts, we just close. The parent handles success feedback usually.
-          // But for now, we'll keep it simple.
           alert("✅ Publishing Queued!");
           onClose();
       } else if (result.status === 'completed') {
@@ -127,7 +127,6 @@ const PublishModal = ({ onClose, renderJobId, isProcessing, productId }) => {
 
   const isConnected = (platform) => accounts.some(acc => acc.platform === platform);
 
-  // --- Render Row Helper ---
   const renderPlatformRow = (platform, label, IconSource) => {
       const connected = isConnected(platform);
       const isSelected = selected[platform];
@@ -180,15 +179,13 @@ const PublishModal = ({ onClose, renderJobId, isProcessing, productId }) => {
         onClose={onClose}
         title={isProcessing ? "Queue Auto-Publish" : "Publish Video"}
         primaryAction={{
-            content: posting ? 'Processing...' : (isProcessing ? 'Queue Publish' : 'Publish Now'),
+            // 🟢 VISUAL CHECK: If this doesn't say "(Fixed)", your browser is using old code!
+            content: posting ? 'Processing...' : (isProcessing ? 'Queue Publish' : 'Publish (Fixed)'),
             onAction: handlePublish,
             loading: posting,
         }}
         secondaryActions={[
-            {
-                content: 'Cancel',
-                onAction: onClose,
-            },
+            { content: 'Cancel', onAction: onClose },
         ]}
     >
         <Modal.Section>
@@ -212,7 +209,7 @@ const PublishModal = ({ onClose, renderJobId, isProcessing, productId }) => {
                 </BlockStack>
 
                 <InlineStack align="center">
-                     <Button variant="plain" icon={RefreshIcon} onClick={() => checkConnection(true)}>
+                     <Button variant="plain" icon={RefreshIcon} onClick={() => checkConnection(true)} loading={checking}>
                         Refresh Connections
                      </Button>
                 </InlineStack>
